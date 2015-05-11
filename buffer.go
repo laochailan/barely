@@ -22,7 +22,7 @@ type Buffer interface {
 type BufferStack struct {
 	buffers []Buffer
 
-	prompt []rune
+	prompt Prompt
 }
 
 func (b *BufferStack) Push(n Buffer) {
@@ -54,40 +54,8 @@ func (b *BufferStack) refresh() {
 	title := b.buffers[len(b.buffers)-1].Title()
 	name := b.buffers[len(b.buffers)-1].Name()
 	printLine(0, h-2, fmt.Sprintf("[%d: %s] %s", len(b.buffers)-1, name, title), -1, -1)
-	if b.prompt != nil {
-		printLine(1, h-1, string(b.prompt), -1, -1)
-	}
-}
-
-func (b *BufferStack) handlePrompt(e *termbox.Event, db *notmuch.Database) {
-	if e.Ch == 0 {
-		switch e.Key {
-		case termbox.KeyEsc:
-			b.prompt = nil
-			b.refresh()
-		case termbox.KeyEnter:
-			fields := strings.Fields(string(b.prompt))
-			if len(fields) > 0 {
-				b.buffers[len(b.buffers)-1].HandleCommand(fields[0], fields[1:])
-				b.handleCommand(fields[0], fields[1:], db)
-			}
-			b.prompt = nil
-			b.refresh()
-		case termbox.KeyBackspace2:
-			if len(b.prompt) > 0 {
-				b.prompt = b.prompt[:len(b.prompt)-1]
-			}
-		case termbox.KeySpace:
-			b.prompt = append(b.prompt, ' ')
-		}
-	} else {
-		b.prompt = append(b.prompt, e.Ch)
-	}
-	_, h := termbox.Size()
-	printLine(1, h-1, string(b.prompt)+"  ", -1, -1)
-	termbox.SetCursor(len(b.prompt)+1, h-1)
-	if b.prompt == nil {
-		termbox.HideCursor()
+	if b.prompt.Active() {
+		b.prompt.Draw()
 	}
 }
 
@@ -104,13 +72,7 @@ func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Datab
 			b.Push(NewSearchBuffer(args[0], db))
 		}
 	case "prompt":
-		b.prompt = append(b.prompt, []rune(strings.Join(args, " ")+" ")...)
-		if len(args) == 0 {
-			b.prompt = b.prompt[:0]
-		}
-		_, h := termbox.Size()
-		printLine(0, h-1, ":"+string(b.prompt), -1, -1)
-		termbox.SetCursor(len(b.prompt)+1, h-1)
+		b.prompt.Activate(strings.Join(args, " "))
 	}
 }
 
@@ -124,8 +86,13 @@ func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
 	}
 
 	if event.Type == termbox.EventKey {
-		if b.prompt != nil {
-			b.handlePrompt(event, db)
+		if b.prompt.Active() {
+			cmd, args := b.prompt.HandleEvent(event)
+			if len(cmd) != 0 {
+
+				b.buffers[len(b.buffers)-1].HandleCommand(cmd, args)
+				b.handleCommand(cmd, args, db)
+			}
 			return
 		}
 		cmd := getBinding("", event.Ch, event.Key)
