@@ -8,12 +8,24 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/mail"
+	"net/textproto"
 	"os"
 	"strings"
 )
 
-func readMail() {
-	filename := "/home/laochailan/mail/nkirou1/INBOX/cur/1431188304_0.573.youmu,U=2072,FMD5=7e33429f656f1e6e9d79b29c3f82c57e:2,S"
+type Part struct {
+	Header textproto.MIMEHeader
+	Body   string
+}
+
+type Mail struct {
+	Header mail.Header
+	Parts  []Part
+}
+
+// reads a mail and parses it into decoded parts
+func readMail(filename string) *Mail {
+	m := new(Mail)
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -25,9 +37,8 @@ func readMail() {
 		log.Fatalln(err)
 	}
 
-	for k, _ := range msg.Header {
-		fmt.Println(k, "\t", msg.Header.Get(k))
-	}
+	m.Header = msg.Header
+
 	mediaType, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
 	if err != nil {
 		log.Fatal(err)
@@ -44,12 +55,16 @@ func readMail() {
 			if err != nil {
 				log.Fatal(err)
 			}
+
 			slurp, err := ioutil.ReadAll(p)
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("Part: %q, %s\n", p.Header, slurp)
+			m.Parts = append(m.Parts, Part{p.Header, string(slurp)})
 		}
+	} else {
+		log.Println("handle this!")
 	}
 
+	return m
 }
