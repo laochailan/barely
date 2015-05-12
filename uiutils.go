@@ -33,12 +33,6 @@ func printLine(x, y int, text string, fg, bg int) {
 	}
 }
 
-func printStatus(text string) {
-	_, h := termbox.Size()
-	printLine(1, h-2, text, -1, -1)
-
-}
-
 func shortFrom(from string) string {
 	fields := strings.Fields(from)
 	return strings.Trim(fields[0], "<>\"'")

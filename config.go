@@ -17,6 +17,7 @@ var specialKeys = map[string]termbox.Key{
 	"right":    termbox.KeyArrowRight,
 	"pageup":   termbox.KeyPgup,
 	"pagedown": termbox.KeyPgdn,
+	"enter":    termbox.KeyEnter,
 }
 
 type KeyBinding struct {
@@ -68,8 +69,11 @@ type Config struct {
 		Subject   int
 		From      int
 
-		HlBg int
-		HlFg int
+		Error int
+
+		HlBg     int
+		HlFg     int
+		MailHlBg int
 	}
 }
 
@@ -91,8 +95,12 @@ date = 103
 subject = 110
 from = 115
 
+error = 88
+
 hlbg = 240
 hlfg = 147
+
+mailhlbg = 133
 
 [bindings]
 key = q quit
@@ -102,6 +110,13 @@ key = : prompt
 key = 1 search tag:nkirou1
 
 [bindings "search"]
+key = up move up
+key = down move down
+key = pageup move pageup
+key = pagedown move pagedown
+key = enter show
+
+[bindings "mail"]
 key = up move up
 key = down move down
 key = pageup move pageup
@@ -121,10 +136,15 @@ func LoadConfig() {
 }
 
 func getBinding(section string, Ch rune, Key termbox.Key) *KeyBinding {
-	sec := config.Bindings[section].Key
-	for i := range sec {
-		if (Ch != 0 && Ch == sec[i].Ch) || (Ch == 0 && Key == sec[i].Key) {
-			return sec[i]
+	sec := config.Bindings[section]
+	if sec == nil {
+		return nil
+	}
+	keys := sec.Key
+
+	for i := range keys {
+		if (Ch != 0 && Ch == keys[i].Ch) || (Ch == 0 && Key == keys[i].Key) {
+			return keys[i]
 		}
 	}
 	return nil

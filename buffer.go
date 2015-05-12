@@ -10,11 +10,12 @@ import (
 
 // A Buffer is a screen of the ui. Buffers are opened on a stack.
 type Buffer interface {
-	Draw()                                   // Draw content on the screen
-	Title() string                           // title displayed in the bottom bar
-	Name() string                            // name of the buffer
-	Close()                                  // Close the Buffer
-	HandleCommand(cmd string, args []string) // Handle a command
+	Draw()         // Draw content on the screen
+	Title() string // Title displayed in the bottom bar. It has to identify buffer uniquely.
+	Name() string  // Name of the buffer
+	Close()        // Close the Buffer
+	HandleCommand(cmd string, args []string,
+		stack *BufferStack) // Handle a command
 }
 
 // BufferStack is the Stack structure managing drawing of the screen and
@@ -26,9 +27,22 @@ type BufferStack struct {
 }
 
 func (b *BufferStack) Push(n Buffer) {
+	for i, buf := range b.buffers {
+		// If the buffer already exists, change to it instead.
+		if buf.Name() == n.Name() && buf.Title() == n.Title() {
+			n.Close()
+			copy(b.buffers[i:], b.buffers[i+1:])
+			b.buffers[len(b.buffers)-1] = buf
+			b.refresh()
+			return
+		}
+	}
 	b.buffers = append(b.buffers, n)
 	b.refresh()
 }
+
+// This string will be displayed at the bottom of the screen. useful for error messages.
+var StatusLine string
 
 func (b *BufferStack) Pop() {
 	if len(b.buffers) == 0 {
@@ -56,6 +70,9 @@ func (b *BufferStack) refresh() {
 	printLine(0, h-2, fmt.Sprintf("[%d: %s] %s", len(b.buffers)-1, name, title), -1, -1)
 	if b.prompt.Active() {
 		b.prompt.Draw()
+	} else if StatusLine != "" {
+		_, h := termbox.Size()
+		printLine(0, h-1, StatusLine, -1, -1)
 	}
 }
 
@@ -72,6 +89,7 @@ func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Datab
 			b.Push(NewSearchBuffer(args[0], db))
 		}
 	case "prompt":
+		StatusLine = ""
 		b.prompt.Activate(strings.Join(args, " "))
 	}
 }
@@ -89,8 +107,7 @@ func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
 		if b.prompt.Active() {
 			cmd, args := b.prompt.HandleEvent(event)
 			if len(cmd) != 0 {
-
-				b.buffers[len(b.buffers)-1].HandleCommand(cmd, args)
+				b.buffers[len(b.buffers)-1].HandleCommand(cmd, args, b)
 				b.handleCommand(cmd, args, db)
 			}
 			return
@@ -101,10 +118,14 @@ func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
 			if cmd == nil {
 				return
 			}
-			b.buffers[len(b.buffers)-1].HandleCommand(cmd.Command, cmd.Args)
-			return
+			b.buffers[len(b.buffers)-1].HandleCommand(cmd.Command, cmd.Args, b)
+		} else {
+			b.handleCommand(cmd.Command, cmd.Args, db)
 		}
-		b.handleCommand(cmd.Command, cmd.Args, db)
+		if StatusLine != "" {
+			_, h := termbox.Size()
+			printLine(0, h-1, StatusLine, -1, -1)
+		}
 	}
 
 }

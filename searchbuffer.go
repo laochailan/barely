@@ -14,6 +14,7 @@ type SearchBuffer struct {
 	database *notmuch.Database
 	messages []*notmuch.Message
 	msgit    *notmuch.Messages
+	query    *notmuch.Query
 
 	cursor int
 }
@@ -25,8 +26,8 @@ func NewSearchBuffer(term string, db *notmuch.Database) *SearchBuffer {
 
 	_, h := termbox.Size()
 	buf.messages = make([]*notmuch.Message, 0, h)
-	query := db.CreateQuery(term)
-	buf.msgit = query.SearchMessages()
+	buf.query = db.CreateQuery(term)
+	buf.msgit = buf.query.SearchMessages()
 
 	for i := 0; i < h && buf.msgit.Valid(); i++ {
 		buf.messages = append(buf.messages, buf.msgit.Get())
@@ -93,9 +94,10 @@ func (b *SearchBuffer) Name() string {
 }
 
 func (b *SearchBuffer) Close() {
+	b.query.Destroy()
 }
 
-func (b *SearchBuffer) HandleCommand(cmd string, args []string) {
+func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) {
 	switch cmd {
 	case "move":
 		if len(args) == 0 {
@@ -116,6 +118,8 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string) {
 			b.cursor = 0
 		}
 		b.Draw()
+	case "show":
+		stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName()))
 	}
 
 }

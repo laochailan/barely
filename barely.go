@@ -10,6 +10,12 @@ import (
 
 func main() {
 	var buffers BufferStack
+	logfile, err := os.Create("barely.log")
+	if err != nil {
+		log.Printf("Warning: Could not open log file")
+	} else {
+		log.SetOutput(logfile)
+	}
 
 	LoadConfig()
 
@@ -19,7 +25,7 @@ func main() {
 	}
 	defer database.Close()
 
-	err := termbox.Init()
+	err = termbox.Init()
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,10 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime"
 	"mime/multipart"
 	"net/mail"
@@ -24,47 +23,63 @@ type Mail struct {
 }
 
 // reads a mail and parses it into decoded parts
-func readMail(filename string) *Mail {
+func readMail(filename string) (*Mail, error) {
 	m := new(Mail)
 
 	file, err := os.Open(filename)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	msg, err := mail.ReadMessage(file)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	m.Header = msg.Header
 
 	mediaType, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
+	var bodyReader io.Reader
+	var boundary string
 	if strings.HasPrefix(mediaType, "multipart/") {
-		mr := multipart.NewReader(msg.Body, params["boundary"])
-		fmt.Println(params["boundary"])
-		for {
-			p, err := mr.NextPart()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			slurp, err := ioutil.ReadAll(p)
-			if err != nil {
-				log.Fatal(err)
-			}
-			m.Parts = append(m.Parts, Part{p.Header, string(slurp)})
-		}
+		bodyReader = msg.Body
+		boundary = params["boundary"]
 	} else {
-		log.Println("handle this!")
+		// convert to multipart
+		const boundaryText = "uaedt3rnc5trnu0aio94rane"
+		buf := new(bytes.Buffer)
+		buf.WriteString("--" + boundaryText + "\n")
+		buf.WriteString("Content-Type: " + m.Header.Get("Content-Type") + "\n")
+		buf.WriteString("Content-Transfer-Encoding: " + m.Header.Get("Content-Transfer-Encoding") + "\n\n")
+		io.Copy(buf, msg.Body)
+		buf.WriteString("--" + boundaryText + "--\n")
+
+		bodyReader = buf
+		boundary = boundaryText
+
+	}
+	/*all, _ := ioutil.ReadAll(bodyReader)
+	log.Println(string(all))*/
+	mr := multipart.NewReader(bodyReader, boundary)
+	for {
+		p, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		slurp, err := ioutil.ReadAll(p)
+		if err != nil {
+			return nil, err
+		}
+		m.Parts = append(m.Parts, Part{p.Header, string(slurp)})
 	}
 
-	return m
+	return m, nil
 }
