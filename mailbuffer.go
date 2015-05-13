@@ -56,6 +56,11 @@ func (b *MailBuffer) drawPlain(y *int, text string) {
 		x++
 	}
 
+	for ; *y >= mbHeaderHeight && *y < h-2 && x < w; x++ {
+		cbuf[*y*w+x] = termbox.Cell{0, 0, 0}
+	}
+	(*y)++
+
 	cursor := b.cursor
 	if cursor >= h*3/4 {
 		cursor = h * 3 / 4

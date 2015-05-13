@@ -53,7 +53,7 @@ func (b *SearchBuffer) Draw() {
 	}
 	for i := 0; i < h-2; i++ {
 		for x := 0; x < w; x++ {
-			cbuf[i*w+x].Ch = ' '
+			cbuf[i*w+x].Ch = 0
 			if i+offset == b.cursor {
 				cbuf[i*w+x].Fg = termbox.Attribute(config.Theme.HlFg) |
 					termbox.AttrBold

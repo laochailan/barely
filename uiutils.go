@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,8 +20,11 @@ func printLine(x, y int, text string, fg, bg int) {
 	cbuf := termbox.CellBuffer()
 	i := 0
 	for _, c := range text {
+		if !strconv.IsPrint(c) {
+			continue
+		}
 		if x+i < 0 || x+i >= w {
-			return
+			continue
 		}
 		cbuf[y*w+x+i].Ch = c
 		if fg >= 0 {
