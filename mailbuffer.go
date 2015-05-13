@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"mime"
 
 	termbox "github.com/nsf/termbox-go"
@@ -10,6 +11,8 @@ import (
 type MailBuffer struct {
 	mail   *Mail
 	cursor int
+
+	buffer []termbox.Cell
 }
 
 func NewMailBuffer(filename string) *MailBuffer {
@@ -20,57 +23,71 @@ func NewMailBuffer(filename string) *MailBuffer {
 		StatusLine = err.Error()
 		buf.mail = new(Mail)
 	}
-	buf.cursor = mbHeaderHeight
+	buf.cursor = 0
 
+	buf.refreshBuf()
 	return buf
 }
 
 const mbHeaderHeight = 5 // lines occupied by the header field
 
-func (b *MailBuffer) drawPlain(y *int, text string) {
+func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int) {
+	line := make([]termbox.Cell, w)
 	x := 0
-	w, h := termbox.Size()
-	cbuf := termbox.CellBuffer()
+	log.Println("aa")
 	for _, ch := range text {
 		if ch == '\n' {
-			for ; *y >= mbHeaderHeight && *y < h-2 && x < w; x++ {
-				cbuf[*y*w+x] = termbox.Cell{0, 0, 0}
+			for ; x < w; x++ {
+				buf[y*w+x] = termbox.Cell{0, 0, 0}
 			}
-			(*y)++
+			y++
 			x = 0
+			buf = append(buf, line...)
 			continue
 		}
 		if x >= w {
-			(*y)++
+			y++
+			buf = append(buf, line...)
 			x = 0
 		}
-		if *y < mbHeaderHeight {
-			x++
-			continue
-		}
-		if *y >= h-2 {
-			break
-		}
-		cbuf[*y*w+x].Ch = ch
-		cbuf[*y*w+x].Fg = 0
-		cbuf[*y*w+x].Bg = 0
+
+		buf[y*w+x] = termbox.Cell{ch, 0, 0}
 		x++
 	}
 
-	for ; *y >= mbHeaderHeight && *y < h-2 && x < w; x++ {
-		cbuf[*y*w+x] = termbox.Cell{0, 0, 0}
+	for ; x < w; x++ {
+		buf[y*w+x] = termbox.Cell{0, 0, 0}
 	}
-	(*y)++
+	y++
+	return buf, y
+}
 
-	cursor := b.cursor
-	if cursor >= h*3/4 {
-		cursor = h * 3 / 4
-	}
-
-	if cursor >= mbHeaderHeight && cursor < h-2 {
-		for x := 0; x < w; x++ {
-			cbuf[cursor*w+x].Bg = termbox.Attribute(config.Theme.HlBg)
+// refreshBuf preformats the whole mail so that redrawing it while scrolling is faster.
+func (b *MailBuffer) refreshBuf() {
+	w, _ := termbox.Size()
+	b.buffer = b.buffer[:0]
+	line := make([]termbox.Cell, w)
+	y := 0
+	for _, part := range b.mail.Parts {
+		contentType, _, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
+		if err != nil {
+			continue
 		}
+		x := 0
+		b.buffer = append(b.buffer, line...)
+		str := []rune("-- " + contentType + " --")
+		for ; x < min(w, len(str)); x++ {
+			b.buffer[y*w+x] = termbox.Cell{str[x], termbox.Attribute(config.Theme.Date), 0}
+		}
+		for ; x < w; x++ {
+			b.buffer[y*w+x] = termbox.Cell{0, 0, 0}
+		}
+		if contentType[:4] == "text" {
+			b.buffer, y = formatPlain(b.buffer, y, w, part.Body)
+		}
+	}
+	if b.cursor >= len(b.buffer)/w {
+		b.cursor = len(b.buffer)/w - 1
 	}
 }
 
@@ -95,34 +112,22 @@ func (b *MailBuffer) Draw() {
 		offset = -h*3/4 + b.cursor
 	}
 
-	y := mbHeaderHeight - offset
-
-	for _, part := range b.mail.Parts {
-		contentType, _, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
-		if err != nil {
-			continue
-		}
-		if y >= h-2 {
-			break
-		}
-		if y >= mbHeaderHeight {
-			printLine(0, y, "-- "+contentType+" --", config.Theme.Date, 0)
-			for x := len(contentType) + 6; x < w; x++ {
-				cbuf[y*w+x] = termbox.Cell{0, 0, 0}
-			}
-		}
-		y++
-		if contentType[:4] == "text" {
-			b.drawPlain(&y, part.Body)
-		}
-	}
-
-	if y < mbHeaderHeight {
-		y = mbHeaderHeight
-	}
-	for ; y < h-2; y++ {
+	y := 0
+	for ; y < min(len(b.buffer)/w-offset, h-2-mbHeaderHeight); y++ {
 		for x := 0; x < w; x++ {
-			cbuf[y*w+x] = termbox.Cell{0, 0, 0}
+			cbuf[(y+mbHeaderHeight)*w+x] = b.buffer[(y+offset)*w+x]
+		}
+	}
+
+	for ; y < h-2-mbHeaderHeight; y++ {
+		for x := 0; x < w; x++ {
+			cbuf[(y+mbHeaderHeight)*w+x] = termbox.Cell{0, 0, 0}
+		}
+	}
+
+	if b.cursor-offset >= 0 && b.cursor-offset < h-2-mbHeaderHeight {
+		for x := 0; x < w; x++ {
+			cbuf[(b.cursor-offset+mbHeaderHeight)*w+x].Bg = termbox.Attribute(config.Theme.HlBg)
 		}
 	}
 
@@ -156,10 +161,16 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 		case "pagedown":
 			b.cursor += h / 2
 		}
-		if b.cursor < mbHeaderHeight {
-			b.cursor = mbHeaderHeight
+		if b.cursor < 0 {
+			b.cursor = 0
+		}
+		w, _ := termbox.Size()
+		if b.cursor >= len(b.buffer)/w {
+			b.cursor = len(b.buffer)/w - 1
 		}
 		b.Draw()
+	case "resize":
+		b.refreshBuf()
 	}
 
 }

@@ -42,6 +42,13 @@ func shortFrom(from string) string {
 	return strings.Trim(fields[0], "<>\"'")
 }
 
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
 func shortTime(date time.Time) string {
 	now := time.Now()
 	dur := time.Since(date)

@@ -97,6 +97,9 @@ func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
 		return
 	}
 	if event.Type == termbox.EventResize {
+		for _, buf := range b.buffers {
+			buf.HandleCommand("resize", nil, b)
+		}
 		b.refresh()
 		return
 	}

@@ -118,6 +118,10 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 			b.cursor = 0
 		}
 		b.Draw()
+		if !b.msgit.Valid() && b.cursor >= len(b.messages) {
+			b.cursor = len(b.messages) - 1
+			b.Draw()
+		}
 	case "show":
 		stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName()))
 	}
