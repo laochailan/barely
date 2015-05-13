@@ -1,3 +1,7 @@
+// Copyright 2015 Lukas Weber. All rights reserved.
+// Use of this source code is governed by the MIT-styled
+// license that can be found in the LICENSE file.
+
 package main
 
 import (
@@ -39,6 +43,9 @@ func printLine(x, y int, text string, fg, bg int) {
 
 func shortFrom(from string) string {
 	fields := strings.Fields(from)
+	if len(fields) == 0 {
+		return ""
+	}
 	return strings.Trim(fields[0], "<>\"'")
 }
 
