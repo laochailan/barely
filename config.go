@@ -75,6 +75,10 @@ type Config struct {
 		HlFg     int
 		MailHlBg int
 	}
+
+	Commands struct {
+		Attachments string
+	}
 }
 
 const (
@@ -87,6 +91,9 @@ var config Config
 const defaultCfg = `
 [general]
 database="$HOME/mail"
+
+[commands]
+attachments="xdg-open"
 
 [theme]
 bottombar = 241
@@ -107,7 +114,6 @@ key = q quit
 key = d close
 key = / prompt search
 key = : prompt
-key = 1 search tag:nkirou1
 
 [bindings "search"]
 key = up move up
@@ -121,6 +127,7 @@ key = up move up
 key = down move down
 key = pageup move pageup
 key = pagedown move pagedown
+key = enter show
 `
 
 func LoadConfig() {

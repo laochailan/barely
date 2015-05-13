@@ -1,8 +1,13 @@
 package main
 
 import (
-	"log"
+	"encoding/base64"
+	"io"
+	"io/ioutil"
 	"mime"
+	"os"
+	"os/exec"
+	"strings"
 
 	termbox "github.com/nsf/termbox-go"
 )
@@ -12,7 +17,10 @@ type MailBuffer struct {
 	mail   *Mail
 	cursor int
 
-	buffer []termbox.Cell
+	buffer    []termbox.Cell
+	partLines []int
+
+	tmpDir string
 }
 
 func NewMailBuffer(filename string) *MailBuffer {
@@ -23,9 +31,16 @@ func NewMailBuffer(filename string) *MailBuffer {
 		StatusLine = err.Error()
 		buf.mail = new(Mail)
 	}
-	buf.cursor = 0
 
+	buf.partLines = make([]int, len(buf.mail.Parts))
+	buf.cursor = 0
 	buf.refreshBuf()
+
+	buf.tmpDir, err = ioutil.TempDir("", "barely")
+	if err != nil {
+		StatusLine = "Could not open TempDir: " + err.Error()
+	}
+
 	return buf
 }
 
@@ -34,7 +49,7 @@ const mbHeaderHeight = 5 // lines occupied by the header field
 func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int) {
 	line := make([]termbox.Cell, w)
 	x := 0
-	log.Println("aa")
+	buf = append(buf, line...)
 	for _, ch := range text {
 		if ch == '\n' {
 			for ; x < w; x++ {
@@ -68,21 +83,30 @@ func (b *MailBuffer) refreshBuf() {
 	b.buffer = b.buffer[:0]
 	line := make([]termbox.Cell, w)
 	y := 0
-	for _, part := range b.mail.Parts {
-		contentType, _, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
+	for i, part := range b.mail.Parts {
+		x := 0
+		b.buffer = append(b.buffer, line...)
+
+		contentType, params, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
 		if err != nil {
 			continue
 		}
-		x := 0
-		b.buffer = append(b.buffer, line...)
-		str := []rune("-- " + contentType + " --")
+		contentStr := contentType
+		if name := params["name"]; name != "" {
+			contentStr += ": \"" + name + "\""
+		}
+
+		b.partLines[i] = y
+		str := []rune("-- " + contentStr + " --")
 		for ; x < min(w, len(str)); x++ {
 			b.buffer[y*w+x] = termbox.Cell{str[x], termbox.Attribute(config.Theme.Date), 0}
 		}
 		for ; x < w; x++ {
 			b.buffer[y*w+x] = termbox.Cell{0, 0, 0}
 		}
-		if contentType[:4] == "text" {
+		y++
+
+		if contentType == "text/plain" {
 			b.buffer, y = formatPlain(b.buffer, y, w, part.Body)
 		}
 	}
@@ -142,6 +166,30 @@ func (b *MailBuffer) Name() string {
 }
 
 func (b *MailBuffer) Close() {
+	os.RemoveAll(b.tmpDir)
+}
+
+func openAttachment(p *Part, dir string) {
+	contentType, params, err := mime.ParseMediaType(p.Header.Get("Content-Type"))
+	if err != nil || contentType[:4] == "text" || params["name"] == "" {
+		return // probably not an attachment.
+	}
+	filename := dir + "/" + params["name"]
+	file, err := os.Create(filename)
+	if err != nil {
+		StatusLine = err.Error()
+		return
+	}
+	if p.Header.Get("Content-Transfer-Encoding") == "base64" {
+		decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(p.Body))
+		io.Copy(file, decoder)
+	} else {
+		StatusLine = "opening failed. encoding unsupported."
+	}
+
+	cmd := exec.Command(config.Commands.Attachments, filename)
+	cmd.Start()
+	go cmd.Wait()
 }
 
 func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) {
@@ -171,6 +219,13 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 		b.Draw()
 	case "resize":
 		b.refreshBuf()
+	case "show":
+		for i, l := range b.partLines {
+			if b.cursor == l {
+				openAttachment(&b.mail.Parts[i], b.tmpDir)
+				break
+			}
+		}
 	}
 
 }
