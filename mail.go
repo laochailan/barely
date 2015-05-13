@@ -56,14 +56,12 @@ func readMail(filename string) (*Mail, error) {
 		buf.WriteString("Content-Type: " + m.Header.Get("Content-Type") + "\n")
 		buf.WriteString("Content-Transfer-Encoding: " + m.Header.Get("Content-Transfer-Encoding") + "\n\n")
 		io.Copy(buf, msg.Body)
-		buf.WriteString("--" + boundaryText + "--\n")
+		buf.WriteString("\n--" + boundaryText + "--\n")
 
 		bodyReader = buf
 		boundary = boundaryText
 
 	}
-	/*all, _ := ioutil.ReadAll(bodyReader)
-	log.Println(string(all))*/
 	mr := multipart.NewReader(bodyReader, boundary)
 	for {
 		p, err := mr.NextPart()

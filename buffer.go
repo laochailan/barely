@@ -81,13 +81,11 @@ func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Datab
 	case "close":
 		b.Pop()
 	case "quit":
-		b.buffers = b.buffers[:0]
-	case "search":
-		if len(args) == 0 {
-			b.Push(NewSearchBuffer("", db))
-		} else {
-			b.Push(NewSearchBuffer(args[0], db))
+		for len(b.buffers) > 0 {
+			b.Pop()
 		}
+	case "search":
+		b.Push(NewSearchBuffer(strings.Join(args, " "), db))
 	case "prompt":
 		StatusLine = ""
 		b.prompt.Activate(strings.Join(args, " "))

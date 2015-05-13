@@ -55,7 +55,7 @@ func shortTime(date time.Time) string {
 	case date.YearDay() == now.YearDay():
 		return date.Format("15:04")
 	case now.YearDay()-date.YearDay() == 1:
-		return fmt.Sprintf("yest %2dh", date.Hour())
+		return fmt.Sprintf("yest %02dh", date.Hour())
 	case now.YearDay()-date.YearDay() < 7:
 		return date.Format("Mo 15h")
 	}

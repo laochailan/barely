@@ -45,6 +45,7 @@ func (b *MailBuffer) drawPlain(y *int, text string) {
 			x = 0
 		}
 		if *y < mbHeaderHeight {
+			x++
 			continue
 		}
 		if *y >= h-2 {
