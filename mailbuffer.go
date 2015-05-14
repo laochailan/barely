@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	termbox "github.com/nsf/termbox-go"
+	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
 
 // MailBuffer displays mails and allows replying to them
@@ -120,14 +121,22 @@ func (b *MailBuffer) refreshBuf() {
 }
 
 func (b *MailBuffer) drawHeader() {
-	printLine(0, 0, "| Date:", config.Theme.Subject|int(termbox.AttrBold), -1)
-	printLine(0, 1, "| From:", config.Theme.Subject|int(termbox.AttrBold), -1)
-	printLine(0, 2, "| To:", config.Theme.Subject|int(termbox.AttrBold), -1)
-	printLine(0, 3, "| Subject:", config.Theme.Subject|int(termbox.AttrBold), -1)
-	printLine(0, 0, "| Date: "+b.mail.Header.Get("Date"), -1, -1)
-	printLine(0, 1, "| From: "+b.mail.Header.Get("From"), -1, -1)
-	printLine(0, 2, "| To: "+b.mail.Header.Get("To"), -1, -1)
-	printLine(0, 3, "| Subject: "+b.mail.Header.Get("Subject"), -1, -1)
+	getHeader := func(key string) string {
+		str, _, err := qp.DecodeHeader(b.mail.Header.Get(key)) // ignore charset for now
+		if err != nil {
+			str = err.Error()
+		}
+		return str
+	}
+	drawField := func(y int, label, value string) {
+		printLine(0, y, "| "+label+": ", config.Theme.Subject|int(termbox.AttrBold), -1)
+		printLine(len(label)+4, y, value, -1, -1)
+	}
+
+	drawField(0, "Date", getHeader("Date"))
+	drawField(1, "From", getHeader("From"))
+	drawField(2, "To", getHeader("To"))
+	drawField(3, "Subject", getHeader("Subject"))
 }
 
 func (b *MailBuffer) Draw() {
