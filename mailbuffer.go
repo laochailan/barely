@@ -5,9 +5,7 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"mime"
 	"os"
@@ -95,12 +93,12 @@ func (b *MailBuffer) refreshBuf() {
 		x := 0
 		b.buffer = append(b.buffer, line...)
 
-		contentType, params, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
+		contentType, _, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
 		if err != nil {
 			continue
 		}
 		contentStr := contentType
-		if name := params["name"]; name != "" {
+		if name := attachmentName(&part); name != "" {
 			contentStr += ": \"" + name + "\""
 		}
 
@@ -185,23 +183,45 @@ func (b *MailBuffer) Close() {
 	os.RemoveAll(b.tmpDir)
 }
 
-func openAttachment(p *Part, dir string) {
-	contentType, params, err := mime.ParseMediaType(p.Header.Get("Content-Type"))
-	if err != nil || contentType[:4] == "text" || params["name"] == "" {
-		return // probably not an attachment.
+func attachmentName(p *Part) string {
+	_, params, err := mime.ParseMediaType(p.Header.Get("Content-Type"))
+	if err != nil {
+		return ""
 	}
-	filename := dir + "/" + params["name"]
+	if name := params["name"]; name != "" {
+		return name
+	}
+	_, params, err = mime.ParseMediaType(p.Header.Get("Content-Disposition"))
+	if err != nil {
+		return ""
+	}
+	return params["filename"]
+}
+
+func openAttachment(p *Part, dir string) {
+	name := attachmentName(p)
+	if name == "" {
+		contentType, _, _ := mime.ParseMediaType(p.Header.Get("Content-Type"))
+		idx := strings.Index(contentType, "/")
+		if idx == -1 {
+			idx = 0
+		}
+
+		name = "attachment." + contentType[min(len(contentType), idx+1):]
+	}
+
+	filename := dir + "/" + name
 	file, err := os.Create(filename)
 	if err != nil {
 		StatusLine = err.Error()
 		return
 	}
-	if p.Header.Get("Content-Transfer-Encoding") == "base64" {
-		decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(p.Body))
-		io.Copy(file, decoder)
-	} else {
+	if p.Header.Get("Content-Transfer-Encoding") != "base64" {
 		StatusLine = "opening failed. encoding unsupported."
+		return
 	}
+	file.Write([]byte(p.Body))
+	file.Close()
 
 	cmd := exec.Command(config.Commands.Attachments, filename)
 	err = cmd.Start()
@@ -250,13 +270,11 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 		cmd := exec.Command("vim", b.filename)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
 		err := cmd.Run()
 		if err != nil {
 			fmt.Println(err)
 		}
 		termbox.Sync()
-
 	}
 
 }

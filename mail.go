@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -24,6 +25,39 @@ type Part struct {
 type Mail struct {
 	Header mail.Header
 	Parts  []Part
+}
+
+func readParts(reader io.Reader, boundary string, parts []Part) ([]Part, error) {
+	mr := multipart.NewReader(reader, boundary)
+	for {
+		p, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		mediaType, params, err := mime.ParseMediaType(p.Header.Get("Content-Type"))
+		if strings.HasPrefix(mediaType, "multipart/") {
+			parts, err = readParts(p, params["boundary"], parts)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			r := io.Reader(p)
+			if p.Header.Get("Content-Transfer-Encoding") == "base64" {
+				r = base64.NewDecoder(base64.StdEncoding, p)
+			}
+
+			slurp, err := ioutil.ReadAll(r)
+			if err != nil {
+				return nil, err
+			}
+			parts = append(parts, Part{p.Header, string(slurp)})
+		}
+	}
+	return parts, nil
 }
 
 // reads a mail and parses it into decoded parts
@@ -64,26 +98,11 @@ func readMail(filename string) (*Mail, error) {
 
 		bodyReader = buf
 		boundary = boundaryText
-
-	}
-	mr := multipart.NewReader(bodyReader, boundary)
-	for {
-		p, err := mr.NextPart()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		slurp, err := ioutil.ReadAll(p)
-		if err != nil {
-			return nil, err
-		}
-		m.Parts = append(m.Parts, Part{p.Header, string(slurp)})
 	}
 
-	return m, nil
+	m.Parts, err = readParts(bodyReader, boundary, m.Parts)
+
+	return m, err
 }
 
 func constructReply(m *Mail) *Mail {
