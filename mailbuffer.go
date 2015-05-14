@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -19,8 +20,9 @@ import (
 
 // MailBuffer displays mails and allows replying to them
 type MailBuffer struct {
-	mail   *Mail
-	cursor int
+	filename string
+	mail     *Mail
+	cursor   int
 
 	buffer    []termbox.Cell
 	partLines []int
@@ -31,6 +33,7 @@ type MailBuffer struct {
 func NewMailBuffer(filename string) *MailBuffer {
 	buf := new(MailBuffer)
 	var err error
+	buf.filename = filename
 	buf.mail, err = readMail(filename)
 	if err != nil {
 		StatusLine = err.Error()
@@ -201,7 +204,10 @@ func openAttachment(p *Part, dir string) {
 	}
 
 	cmd := exec.Command(config.Commands.Attachments, filename)
-	cmd.Start()
+	err = cmd.Start()
+	if err != nil {
+		StatusLine = err.Error()
+	}
 	go cmd.Wait()
 }
 
@@ -239,6 +245,18 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 				break
 			}
 		}
+	case "raw":
+		//termbox.Close()
+		cmd := exec.Command("vim", b.filename)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println(err)
+		}
+		termbox.Sync()
+
 	}
 
 }

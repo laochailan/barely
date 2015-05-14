@@ -85,3 +85,15 @@ func readMail(filename string) (*Mail, error) {
 
 	return m, nil
 }
+
+func constructReply(m *Mail) *Mail {
+	reply := new(Mail)
+	reply.Header = make(mail.Header)
+
+	reply.Header["MIME-Version"] = []string{"1.0"}
+	reply.Header["Content-Transfer-Encoding"] = []string{"quoted-printable"}
+	reply.Header["User-Agent"] = []string{"barely/0.1"}
+
+	/*reply.Header["Content-Type"] = "text/plain; charset=\"utf-8\""*/
+	return reply
+}
