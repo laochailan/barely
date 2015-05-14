@@ -36,8 +36,8 @@ func main() {
 	defer termbox.Close()
 
 	termbox.SetOutputMode(termbox.Output256)
+	buffers.Init(database)
 
-	buffers.Push(NewSearchBuffer("Nandita", database))
 	for len(buffers.buffers) > 0 {
 		termbox.Flush()
 		event := termbox.PollEvent()

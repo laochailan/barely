@@ -62,7 +62,8 @@ type KeyBindings struct {
 // Refer to gcfg documentation for the resulting config file syntax.
 type Config struct {
 	General struct {
-		Database string
+		Database        string
+		Initial_Command string
 	}
 
 	Bindings map[string]*KeyBindings
@@ -82,6 +83,7 @@ type Config struct {
 
 	Commands struct {
 		Attachments string
+		Editor      string
 	}
 }
 
@@ -93,12 +95,27 @@ var config Config
 
 // default configuration
 const defaultCfg = `
+# This is the default configuration file for barely.
+# barely looks for it in '~/.config/barely/config'
+#
+# Omitted options will default to the settings they have here.
+# For syntax, see http://git-scm.com/docs/git-config#_syntax
+
 [general]
+# Location of the notmuch database
 database="$HOME/mail"
+# First command to be executed on start. This should open a
+# new buffer. If it doesn't, a search buffer for "" is opened.
+initial-command="search tag:unread"
 
 [commands]
+# program used to open all tpyes of attachments
 attachments="xdg-open"
+# editor program
+editor="vim"
 
+# This section describes the color theme. Colors are numbers
+# in the terminal 256 color cube.
 [theme]
 bottombar = 241
 
@@ -112,6 +129,12 @@ hlbg = 240
 hlfg = 147
 
 mailhlbg = 133
+
+# The bindings sections contain keybinding definitions of the
+# form
+#	key = KEY COMMAND ARGS...
+#
+# Valid commands differ from buffer to buffer.
 
 [bindings]
 key = q quit
@@ -132,6 +155,7 @@ key = down move down
 key = pageup move pageup
 key = pagedown move pagedown
 key = enter show
+key = r reply
 `
 
 func LoadConfig() {

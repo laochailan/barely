@@ -56,6 +56,13 @@ func min(x, y int) int {
 	return y
 }
 
+func max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
 func shortTime(date time.Time) string {
 	now := time.Now()
 	dur := time.Since(date)

@@ -14,12 +14,18 @@ import (
 
 // A Buffer is a screen of the ui. Buffers are opened on a stack.
 type Buffer interface {
-	Draw()         // Draw content on the screen
-	Title() string // Title displayed in the bottom bar. It has to identify buffer uniquely.
-	Name() string  // Name of the buffer
-	Close()        // Close the Buffer
-	HandleCommand(cmd string, args []string,
-		stack *BufferStack) // Handle a command
+	// Draw content on the screen
+	Draw()
+	// Title displayed in the bottom bar. It has to identify buffer uniquely.
+	Title() string
+	// Name of the buffer
+	Name() string
+	// Close the Buffer
+	Close()
+
+	// HandleCommand handles string commands. If it returns bool, the
+	// command was accepted. If not, it was invalid.
+	HandleCommand(cmd string, args []string, stack *BufferStack) bool
 }
 
 // BufferStack is the Stack structure managing drawing of the screen and
@@ -28,6 +34,23 @@ type BufferStack struct {
 	buffers []Buffer
 
 	prompt Prompt
+}
+
+func invalidCommand(cmd string) {
+	StatusLine = "invalid command: " + cmd
+}
+
+func (b *BufferStack) Init(db *notmuch.Database) {
+	fields := strings.Fields(config.General.Initial_Command)
+	if len(fields) > 0 {
+		accept := b.handleCommand(fields[0], fields[1:], db)
+		if !accept {
+			invalidCommand(fields[0])
+		}
+		if len(b.buffers) == 0 {
+			b.Push(NewSearchBuffer("", nil))
+		}
+	}
 }
 
 func (b *BufferStack) Push(n Buffer) {
@@ -80,7 +103,7 @@ func (b *BufferStack) refresh() {
 	}
 }
 
-func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Database) {
+func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Database) bool {
 	switch cmd {
 	case "close":
 		b.Pop()
@@ -93,7 +116,10 @@ func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Datab
 	case "prompt":
 		StatusLine = ""
 		b.prompt.Activate(strings.Join(args, " "))
+	default:
+		return false
 	}
+	return true
 }
 
 func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
@@ -113,21 +139,33 @@ func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
 		if b.prompt.Active() {
 			cmd, args := b.prompt.HandleEvent(event)
 			if len(cmd) != 0 {
-				b.buffers[len(b.buffers)-1].HandleCommand(cmd, args, b)
-				b.handleCommand(cmd, args, db)
+				accept := b.buffers[len(b.buffers)-1].HandleCommand(cmd, args, b)
+				if !accept {
+					accept = b.handleCommand(cmd, args, db)
+				}
+				if !accept {
+					invalidCommand(cmd)
+				}
+				_, h := termbox.Size()
+				printLine(0, h-1, StatusLine, -1, -1)
 			}
 			return
 		}
 		cmd := getBinding("", event.Ch, event.Key)
+		accept := false
 		if cmd == nil {
 			cmd := getBinding(b.buffers[len(b.buffers)-1].Name(), event.Ch, event.Key)
 			if cmd == nil {
 				return
 			}
-			b.buffers[len(b.buffers)-1].HandleCommand(cmd.Command, cmd.Args, b)
+			accept = b.buffers[len(b.buffers)-1].HandleCommand(cmd.Command, cmd.Args, b)
 		} else {
-			b.handleCommand(cmd.Command, cmd.Args, db)
+			accept = b.handleCommand(cmd.Command, cmd.Args, db)
 		}
+		if !accept {
+			invalidCommand(cmd.Command)
+		}
+
 		if StatusLine != "" {
 			_, h := termbox.Size()
 			printLine(0, h-1, StatusLine, -1, -1)

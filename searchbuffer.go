@@ -101,7 +101,7 @@ func (b *SearchBuffer) Close() {
 	b.query.Destroy()
 }
 
-func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) {
+func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) bool {
 	switch cmd {
 	case "move":
 		if len(args) == 0 {
@@ -128,6 +128,8 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 		}
 	case "show":
 		stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName()))
+	default:
+		return false
 	}
-
+	return true
 }

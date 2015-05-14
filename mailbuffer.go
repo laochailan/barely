@@ -216,10 +216,6 @@ func openAttachment(p *Part, dir string) {
 		StatusLine = err.Error()
 		return
 	}
-	if p.Header.Get("Content-Transfer-Encoding") != "base64" {
-		StatusLine = "opening failed. encoding unsupported."
-		return
-	}
 	file.Write([]byte(p.Body))
 	file.Close()
 
@@ -231,7 +227,7 @@ func openAttachment(p *Part, dir string) {
 	go cmd.Wait()
 }
 
-func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) {
+func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) bool {
 	switch cmd {
 	case "move":
 		if len(args) == 0 {
@@ -267,7 +263,7 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 		}
 	case "raw":
 		//termbox.Close()
-		cmd := exec.Command("vim", b.filename)
+		cmd := exec.Command(config.Commands.Editor, b.filename)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		err := cmd.Run()
@@ -275,6 +271,11 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 			fmt.Println(err)
 		}
 		termbox.Sync()
+	case "reply":
+		constructReply(b.mail)
+	default:
+		return false
 	}
+	return true
 
 }
