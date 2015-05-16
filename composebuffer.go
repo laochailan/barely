@@ -147,11 +147,29 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 	case "edit":
 		b.openEditor(stack)
 	case "send":
-		mailcont, err := encodeMail(b.mb.mail)
+		mailcont, err := b.mb.mail.Encode()
 		if err != nil {
 			StatusLine = err.Error()
 		}
 		log.Println(mailcont)
+	case "attach":
+		if len(args) == 0 {
+			StatusLine = "Nothing to attach"
+			break
+		}
+
+		err := b.mb.mail.attachFile(strings.Join(args, " "))
+		if err != nil {
+			StatusLine = err.Error()
+		} else {
+			StatusLine = "attached \"" + strings.Join(args, " ") + "\""
+		}
+		b.mb.refreshBuf()
+	case "deattach":
+		if len(b.mb.mail.Parts) > 1 {
+			b.mb.mail.Parts = b.mb.mail.Parts[:len(b.mb.mail.Parts)-1]
+		}
+		b.mb.refreshBuf()
 	default:
 		return b.mb.HandleCommand(cmd, args, stack)
 	}

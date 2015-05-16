@@ -103,6 +103,7 @@ func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int
 func (b *MailBuffer) refreshBuf() {
 	w, _ := termbox.Size()
 	b.buffer = b.buffer[:0]
+	b.partLines = make([]int, len(b.mail.Parts))
 	line := make([]termbox.Cell, w)
 	y := 0
 	for i, part := range b.mail.Parts {

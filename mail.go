@@ -18,6 +18,7 @@ import (
 	"net/mail"
 	"net/textproto"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -35,6 +36,7 @@ type Mail struct {
 	Parts  []Part
 }
 
+// readParts read parts out of a multipart body (including nested multiparts).
 func readParts(reader io.Reader, boundary string, parts []Part) ([]Part, error) {
 	mr := multipart.NewReader(reader, boundary)
 	for {
@@ -68,7 +70,7 @@ func readParts(reader io.Reader, boundary string, parts []Part) ([]Part, error) 
 	return parts, nil
 }
 
-// reads a mail and parses it into decoded parts
+// readMail reads a mail and parses it into decoded parts
 func readMail(filename string) (*Mail, error) {
 	m := new(Mail)
 
@@ -113,6 +115,7 @@ func readMail(filename string) (*Mail, error) {
 	return m, err
 }
 
+// composeMail creates a new Mail structure from scratch.
 func composeMail() *Mail {
 	m := new(Mail)
 	m.Header = make(mail.Header)
@@ -129,6 +132,7 @@ func composeMail() *Mail {
 	return m
 }
 
+// composeReply creates a Mail structure for a Reply to Mail m.
 func composeReply(m *Mail) *Mail {
 	reply := composeMail()
 
@@ -186,6 +190,8 @@ func composeReply(m *Mail) *Mail {
 	return reply
 }
 
+// randomBoundary creates a boundary to be used for multipart e-mail bodies.
+// It was taken from the mime/multipart package.
 func randomBoundary() string {
 	var buf [30]byte
 	_, err := io.ReadFull(rand.Reader, buf[:])
@@ -195,7 +201,36 @@ func randomBoundary() string {
 	return fmt.Sprintf("%x", buf[:])
 }
 
-func encodeMail(m *Mail) (string, error) {
+// attachMail adds a file as an attachment to the mail.
+func (m *Mail) attachFile(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	enc := base64.NewEncoder(base64.StdEncoding, &buf)
+	_, err = io.Copy(enc, file)
+	if err != nil {
+		return err
+	}
+	typ := mime.TypeByExtension(filepath.Ext(filename))
+	name := filepath.Base(filename)
+	if typ == "" {
+		typ = "application/octet-stream"
+	}
+
+	header := make(textproto.MIMEHeader)
+	header["Content-Type"] = []string{typ + "; name=\"" + name + "\""}
+	header["Content-Disposition"] = []string{"attachment; filename=\"" + name + "\""}
+	header["Content-Transfer-Encoding"] = []string{"base64"}
+	m.Parts = append(m.Parts, Part{header, buf.String()})
+
+	return nil
+}
+
+// encodeMail encodes a Mail structure to 7bit text.
+func (m *Mail) Encode() (string, error) {
 	if len(m.Parts) == 0 {
 		return "", errors.New("Error: message without content")
 	}
