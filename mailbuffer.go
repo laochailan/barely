@@ -29,14 +29,21 @@ type MailBuffer struct {
 }
 
 func NewMailBuffer(filename string) *MailBuffer {
-	buf := new(MailBuffer)
-	var err error
-	buf.filename = filename
-	buf.mail, err = readMail(filename)
+	m, err := readMail(filename)
 	if err != nil {
 		StatusLine = err.Error()
-		buf.mail = new(Mail)
+		m = new(Mail)
 	}
+
+	buf := NewMailBufferFromMail(m)
+	buf.filename = filename
+	return buf
+}
+
+func NewMailBufferFromMail(m *Mail) *MailBuffer {
+	buf := new(MailBuffer)
+	var err error
+	buf.mail = m
 
 	buf.partLines = make([]int, len(buf.mail.Parts))
 	buf.cursor = 0
@@ -48,6 +55,7 @@ func NewMailBuffer(filename string) *MailBuffer {
 	}
 
 	return buf
+
 }
 
 const mbHeaderHeight = 5 // lines occupied by the header field
@@ -56,7 +64,15 @@ func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int
 	line := make([]termbox.Cell, w)
 	x := 0
 	buf = append(buf, line...)
+	fg := termbox.Attribute(0)
 	for _, ch := range text {
+		if x == 0 {
+			if ch == '>' {
+				fg = termbox.Attribute(config.Theme.Quote)
+			} else {
+				fg = 0
+			}
+		}
 		if ch == '\n' {
 			for ; x < w; x++ {
 				buf[y*w+x] = termbox.Cell{0, 0, 0}
@@ -72,7 +88,7 @@ func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int
 			x = 0
 		}
 
-		buf[y*w+x] = termbox.Cell{ch, 0, 0}
+		buf[y*w+x] = termbox.Cell{ch, fg, 0}
 		x++
 	}
 
@@ -262,7 +278,7 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 			}
 		}
 	case "raw":
-		//termbox.Close()
+		termbox.Close()
 		cmd := exec.Command(config.Commands.Editor, b.filename)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
@@ -270,9 +286,11 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 		if err != nil {
 			fmt.Println(err)
 		}
-		termbox.Sync()
+		termbox.Init()
+		stack.refresh()
 	case "reply":
-		constructReply(b.mail)
+		reply := composeReply(b.mail)
+		stack.Push(NewComposeBuffer(reply))
 	default:
 		return false
 	}

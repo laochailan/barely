@@ -5,18 +5,24 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime"
 	"mime/multipart"
 	"net/mail"
 	"net/textproto"
 	"os"
+	"sort"
 	"strings"
+	"time"
+
+	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
 
 type Part struct {
@@ -107,12 +113,25 @@ func readMail(filename string) (*Mail, error) {
 	return m, err
 }
 
-func constructReply(m *Mail) *Mail {
-	reply := new(Mail)
-	reply.Header = make(mail.Header)
+func composeMail() *Mail {
+	m := new(Mail)
+	m.Header = make(mail.Header)
 
-	reply.Header["MIME-Version"] = []string{"1.0"}
-	reply.Header["User-Agent"] = []string{"barely/0.1"}
+	m.Header["MIME-Version"] = []string{"1.0"}
+	m.Header["User-Agent"] = []string{"barely/0.1"}
+
+	t := time.Now()
+	hostname, _ := os.Hostname()
+	messageid := fmt.Sprintf("<%d%d%d%d%d.%x%x.%x@%s>", t.Year(), t.Month(),
+		t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Unix(), hostname)
+	m.Header["Message-ID"] = []string{messageid}
+	m.Header["Date"] = []string{time.Now().Format(time.RFC1123Z)}
+	return m
+}
+
+func composeReply(m *Mail) *Mail {
+	reply := composeMail()
+
 	reply.Header["To"] = []string{m.Header.Get("From")}
 	reply.Header["From"] = []string{m.Header.Get("To")}
 	reply.Header["In-Reply-To"] = []string{m.Header.Get("Message-ID")}
@@ -147,17 +166,14 @@ func constructReply(m *Mail) *Mail {
 	date, _ := m.Header.Date()
 	datestr := date.Format("2006-01-02 15:04")
 
-	replyBuf.WriteString(fmt.Sprintf("Quoting %s (%s)\n", name, datestr))
+	replyBuf.WriteString(fmt.Sprintf("Quoting %s (%s):\n", name, datestr))
 	for _, p := range m.Parts {
 		contentType, _, _ := mime.ParseMediaType(p.Header.Get("Content-Type"))
 		if contentType == "text/plain" {
-			str := p.Body
-			for nextLine := strings.Index(str, "\n"); nextLine != -1; nextLine = strings.Index(str, "\n") {
-				line := str[:nextLine+1]
-				str = str[nextLine+1:]
-
+			scanner := bufio.NewScanner(strings.NewReader(p.Body))
+			for scanner.Scan() {
 				replyBuf.WriteString("> ")
-				replyBuf.WriteString(line)
+				replyBuf.WriteString(scanner.Text() + "\n")
 			}
 		}
 	}
@@ -167,7 +183,77 @@ func constructReply(m *Mail) *Mail {
 	partHeader["Content-Transfer-Encoding"] = []string{"quoted-printable"}
 	reply.Parts = []Part{Part{partHeader, replyBuf.String()}}
 
-	log.Println(reply)
-
 	return reply
+}
+
+func randomBoundary() string {
+	var buf [30]byte
+	_, err := io.ReadFull(rand.Reader, buf[:])
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%x", buf[:])
+}
+
+func encodeMail(m *Mail) (string, error) {
+	if len(m.Parts) == 0 {
+		return "", errors.New("Error: message without content")
+	}
+
+	boundary := randomBoundary()
+
+	if len(m.Parts) == 1 {
+		for key, val := range m.Parts[0].Header {
+			m.Header[key] = val
+		}
+	} else {
+		m.Header["Content-Type"] = []string{"multipart/mixed; boundary=" + boundary}
+	}
+
+	var buffer bytes.Buffer
+	henc := qp.Q.NewHeaderEncoder("utf-8")
+	headers := make([]string, 0, len(m.Header))
+
+	for key, val := range m.Header {
+		s := strings.Join(val, " ")
+		if s == "" {
+			continue
+		}
+		if qp.NeedsEncoding(s) {
+			s = henc.Encode(s)
+		}
+		headers = append(headers, key+": "+s+"\n")
+	}
+	sort.Strings(headers)
+	for _, s := range headers {
+		_, err := buffer.WriteString(s)
+		if err != nil {
+			return "", err
+		}
+	}
+	_, err := buffer.WriteString("\n")
+	if err != nil {
+		return "", err
+	}
+
+	if len(m.Parts) == 1 {
+		writer := qp.NewEncoder(&buffer)
+		_, err := writer.Write([]byte(m.Parts[0].Body))
+		if err != nil {
+			return "", err
+		}
+	} else {
+		mpw := multipart.NewWriter(&buffer)
+		mpw.SetBoundary(boundary)
+		for _, p := range m.Parts {
+			pw, err := mpw.CreatePart(p.Header)
+			if err != nil {
+				return "", err
+			}
+
+			pw.Write([]byte(p.Body))
+		}
+		mpw.Close()
+	}
+	return buffer.String(), err
 }

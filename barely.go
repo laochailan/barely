@@ -6,7 +6,9 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
 	termbox "github.com/nsf/termbox-go"
@@ -20,6 +22,7 @@ func main() {
 	} else {
 		log.SetOutput(logfile)
 	}
+	rand.Seed(time.Now().Unix())
 
 	LoadConfig()
 

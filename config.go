@@ -76,9 +76,10 @@ type Config struct {
 
 		Error int
 
-		HlBg     int
-		HlFg     int
-		MailHlBg int
+		HlBg int
+		HlFg int
+
+		Quote int
 	}
 
 	Commands struct {
@@ -128,7 +129,7 @@ error = 88
 hlbg = 240
 hlfg = 147
 
-mailhlbg = 133
+quote = 80
 
 # The bindings sections contain keybinding definitions of the
 # form
@@ -156,6 +157,13 @@ key = pageup move pageup
 key = pagedown move pagedown
 key = enter show
 key = r reply
+
+[bindings "compose"]
+key = up move up
+key = down move down
+key = pageup move pageup
+key = pagedown move pagedown
+key = enter edit
 `
 
 func LoadConfig() {
