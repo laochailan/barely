@@ -25,8 +25,9 @@ var specialKeys = map[string]termbox.Key{
 }
 
 type KeyBinding struct {
-	Ch  rune
-	Key termbox.Key // for nonprintables
+	Ch      rune
+	Key     termbox.Key // for nonprintables
+	KeyName string
 
 	Command string
 	Args    []string
@@ -48,6 +49,7 @@ func (k *KeyBinding) UnmarshalText(text []byte) error {
 			return fmt.Errorf("Unsupported key '%s'", fields[0])
 		}
 	}
+	k.KeyName = fields[0]
 
 	k.Command = fields[1]
 	k.Args = fields[2:]
@@ -141,6 +143,7 @@ key = q quit
 key = d close
 key = / prompt search
 key = : prompt
+key = ? help
 
 [bindings "search"]
 key = up move up
