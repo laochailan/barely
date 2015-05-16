@@ -5,6 +5,9 @@
 package main
 
 import (
+	"bytes"
+	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -14,14 +17,25 @@ import (
 	termbox "github.com/nsf/termbox-go"
 )
 
+const (
+	Version   = "0.1"
+	UserAgend = "barely/" + Version
+)
+
 func main() {
-	var buffers BufferStack
-	logfile, err := os.Create("barely.log")
-	if err != nil {
-		log.Printf("Warning: Could not open log file")
-	} else {
-		log.SetOutput(logfile)
+	showcfg := flag.Bool("config", false, "Print example config file.")
+	flag.Parse()
+
+	if *showcfg {
+		fmt.Print(DefaultCfg)
+		return
 	}
+
+	var buffers BufferStack
+	var logbuf bytes.Buffer
+	var err error
+
+	log.SetOutput(&logbuf)
 	rand.Seed(time.Now().Unix())
 
 	LoadConfig()
@@ -36,7 +50,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer termbox.Close()
 
 	termbox.SetOutputMode(termbox.Output256)
 	buffers.Init(database)
@@ -46,5 +59,9 @@ func main() {
 		event := termbox.PollEvent()
 		buffers.HandleEvent(&event, database)
 	}
-
+	termbox.Close()
+	if len(logbuf.Bytes()) != 0 {
+		fmt.Println("Debug log:")
+		fmt.Print(logbuf.String())
+	}
 }

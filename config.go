@@ -95,8 +95,7 @@ const (
 var config Config
 
 // default configuration
-const defaultCfg = `
-# This is the default configuration file for barely.
+const DefaultCfg = `# This is the default configuration file for barely.
 # barely looks for it in '~/.config/barely/config'
 #
 # Omitted options will default to the settings they have here.
@@ -167,7 +166,7 @@ key = enter edit
 `
 
 func LoadConfig() {
-	err := gcfg.ReadStringInto(&config, defaultCfg)
+	err := gcfg.ReadStringInto(&config, DefaultCfg)
 	if err != nil {
 		panic(err)
 	}

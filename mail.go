@@ -118,7 +118,7 @@ func composeMail() *Mail {
 	m.Header = make(mail.Header)
 
 	m.Header["MIME-Version"] = []string{"1.0"}
-	m.Header["User-Agent"] = []string{"barely/0.1"}
+	m.Header["User-Agent"] = []string{UserAgend}
 
 	t := time.Now()
 	hostname, _ := os.Hostname()
@@ -138,12 +138,12 @@ func composeReply(m *Mail) *Mail {
 
 	refs := m.Header["References"]
 
+	newrefs := []string{}
 	if len(refs) > 0 {
-		newrefs := append(refs[:1], refs[max(1, len(refs)-8):]...)
-		newrefs = append(newrefs, m.Header.Get("Message-ID"))
-
-		reply.Header["References"] = newrefs
+		newrefs = append(refs[:1], refs[max(1, len(refs)-8):]...)
 	}
+	newrefs = append(newrefs, m.Header.Get("Message-ID"))
+	reply.Header["References"] = newrefs
 
 	subj := m.Header.Get("Subject")
 	if lower := strings.ToLower(subj); !strings.HasPrefix(lower, "re:") &&
