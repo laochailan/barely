@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"errors"
 	"log"
+	"net/textproto"
 	"os"
 	"os/exec"
 	"strings"
@@ -67,7 +68,10 @@ func writeEditString(filename string, m *Mail) error {
 
 	// assume the first part exists, is text/plain, and contains the message body.
 	if len(m.Parts) == 0 {
-		return errors.New("Error: editing invalid mail.")
+		h := make(textproto.MIMEHeader)
+		h["Content-Type"] = []string{"text/plain; charset=\"utf-8\""}
+		h["Content-Transfer-Encoding"] = []string{"quoted-printable"}
+		m.Parts = append(m.Parts, Part{h, ""})
 	}
 	file.Write([]byte(m.Parts[0].Body))
 	return nil

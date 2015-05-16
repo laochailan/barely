@@ -113,6 +113,8 @@ func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Datab
 		}
 	case "search":
 		b.Push(NewSearchBuffer(strings.Join(args, " "), db))
+	case "compose":
+		b.Push(NewComposeBuffer(composeMail()))
 	case "help":
 		b.Push(&HelpBuffer{b.buffers[len(b.buffers)-1].Name()})
 	case "prompt":
