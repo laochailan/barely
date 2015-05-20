@@ -18,11 +18,14 @@ import (
 	"net/mail"
 	"net/textproto"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/laochailan/barely/maildir"
+	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
 	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
 
@@ -291,4 +294,58 @@ func (m *Mail) Encode() (string, error) {
 		mpw.Close()
 	}
 	return buffer.String(), err
+}
+
+func sendMail(m *Mail, db *notmuch.Database) error {
+	addrl, err := m.Header.AddressList("From")
+	if len(addrl) != 1 {
+		return errors.New("Invalid count of addresses in 'From' field.")
+	}
+
+	addr := addrl[0]
+
+	account := getAccount(addr.Address)
+	if account == nil {
+		return fmt.Errorf("No account configured for '%s'", addr.Address)
+	}
+
+	switch {
+	case account.Sent_Dir == "":
+		return errors.New("No sent-dir configured for account.")
+	case account.Sendmail_Command == "":
+		return errors.New("No sendmail-command configured for account.")
+	}
+
+	mailcont, err := m.Encode()
+	if err != nil {
+		return err
+	}
+
+	strcmd := strings.Split(account.Sendmail_Command, " ")
+	cmd := exec.Command(strcmd[0], strcmd[1:]...)
+	cmd.Stdin = strings.NewReader(mailcont)
+	output, _ := cmd.CombinedOutput()
+	if len(output) != 0 {
+		return errors.New(string(output))
+	}
+
+	filename, err := maildir.Store(os.ExpandEnv(account.Sent_Dir), []byte(mailcont), "S")
+	if err != nil {
+		return err
+	}
+
+	msg, status := db.AddMessage(filename)
+	if status != notmuch.STATUS_SUCCESS {
+		return errors.New(status.String())
+	}
+	defer msg.Destroy()
+
+	for _, tag := range account.Sent_Tag {
+		status = msg.AddTag(tag)
+	}
+	if status != notmuch.STATUS_SUCCESS {
+		return errors.New(status.String())
+	}
+
+	return nil
 }

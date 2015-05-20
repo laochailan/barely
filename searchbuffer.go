@@ -128,7 +128,7 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 		}
 	case "show":
 		if b.cursor >= 0 && b.cursor < len(b.messages) {
-			stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName()))
+			stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName(), b.database))
 		}
 	default:
 		return false

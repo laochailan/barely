@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
 	termbox "github.com/nsf/termbox-go"
 	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
@@ -26,21 +27,24 @@ type MailBuffer struct {
 	partLines []int
 
 	tmpDir string
+
+	db *notmuch.Database
 }
 
-func NewMailBuffer(filename string) *MailBuffer {
+func NewMailBuffer(filename string, db *notmuch.Database) *MailBuffer {
 	m, err := readMail(filename)
 	if err != nil {
 		StatusLine = err.Error()
 		m = new(Mail)
 	}
 
-	buf := NewMailBufferFromMail(m)
+	buf := NewMailBufferFromMail(m, db)
 	buf.filename = filename
+
 	return buf
 }
 
-func NewMailBufferFromMail(m *Mail) *MailBuffer {
+func NewMailBufferFromMail(m *Mail, db *notmuch.Database) *MailBuffer {
 	buf := new(MailBuffer)
 	var err error
 	buf.mail = m
@@ -48,6 +52,8 @@ func NewMailBufferFromMail(m *Mail) *MailBuffer {
 	buf.partLines = make([]int, len(buf.mail.Parts))
 	buf.cursor = 0
 	buf.refreshBuf()
+
+	buf.db = db
 
 	buf.tmpDir, err = ioutil.TempDir("", "barely")
 	if err != nil {
@@ -291,7 +297,7 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 		stack.refresh()
 	case "reply":
 		reply := composeReply(b.mail)
-		stack.Push(NewComposeBuffer(reply))
+		stack.Push(NewComposeBuffer(reply, b.db))
 	default:
 		return false
 	}

@@ -8,13 +8,13 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"log"
 	"net/textproto"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
 	"github.com/nsf/termbox-go"
 )
 
@@ -22,8 +22,8 @@ type ComposeBuffer struct {
 	mb *MailBuffer
 }
 
-func NewComposeBuffer(m *Mail) *ComposeBuffer {
-	return &ComposeBuffer{NewMailBufferFromMail(m)}
+func NewComposeBuffer(m *Mail, db *notmuch.Database) *ComposeBuffer {
+	return &ComposeBuffer{NewMailBufferFromMail(m, db)}
 }
 
 func (b *ComposeBuffer) Draw() {
@@ -53,7 +53,6 @@ func (b *ComposeBuffer) Close() {
 //
 //	Hi,
 //	This is the message body text.
-
 func writeEditString(filename string, m *Mail) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -151,11 +150,12 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 	case "edit":
 		b.openEditor(stack)
 	case "send":
-		mailcont, err := b.mb.mail.Encode()
+		err := sendMail(b.mb.mail, b.mb.db)
 		if err != nil {
 			StatusLine = err.Error()
+		} else {
+			StatusLine = "Mail sent."
 		}
-		log.Println(mailcont)
 	case "attach":
 		if len(args) == 0 {
 			StatusLine = "Nothing to attach"

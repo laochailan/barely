@@ -60,6 +60,14 @@ type KeyBindings struct {
 	Key []*KeyBinding
 }
 
+type Account struct {
+	Addr             string
+	Sendmail_Command string
+	Sent_Tag         []string
+	Sent_Dir         string
+	Draft_Dir        string
+}
+
 // Config holds all configuration values.
 // Refer to gcfg documentation for the resulting config file syntax.
 type Config struct {
@@ -88,6 +96,8 @@ type Config struct {
 		Attachments string
 		Editor      string
 	}
+
+	Account map[string]*Account
 }
 
 const (
@@ -166,6 +176,20 @@ key = down move down
 key = pageup move pageup
 key = pagedown move pagedown
 key = enter edit
+key = y send
+
+# For every address you want to send mail with, there has to be an
+# account section like this one. the addr, sendmail-command and
+# sent-dir are mandatory for sending.
+# draft-dir is mandatory for saving drafts of course.
+#
+# [account "example"]
+# addr = example@example.com
+# sendmail-command = msmtp --account=example -t
+# sent-dir = $HOME/mail/example/sent
+# draft-dir = $HOME/mail/example/draft
+# sent-tag = sent
+# sent-tag = example
 `
 
 func LoadConfig() {
@@ -190,6 +214,15 @@ func getBinding(section string, Ch rune, Key termbox.Key) *KeyBinding {
 	for i := range keys {
 		if (Ch != 0 && Ch == keys[i].Ch) || (Ch == 0 && Key == keys[i].Key) {
 			return keys[i]
+		}
+	}
+	return nil
+}
+
+func getAccount(addr string) *Account {
+	for _, val := range config.Account {
+		if val.Addr == addr {
+			return val
 		}
 	}
 	return nil

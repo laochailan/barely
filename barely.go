@@ -40,7 +40,9 @@ func main() {
 
 	LoadConfig()
 
-	database, status := notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), notmuch.DATABASE_MODE_READ_ONLY)
+	database, status :=
+		notmuch.OpenDatabase(os.ExpandEnv(config.General.Database),
+			1)
 	if status != 0 {
 		log.Fatal(status)
 	}
