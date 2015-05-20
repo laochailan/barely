@@ -340,6 +340,9 @@ func sendMail(m *Mail, db *notmuch.Database) error {
 	}
 	defer msg.Destroy()
 
+	msg.Freeze()
+	defer msg.Thaw()
+	msg.RemoveAllTags()
 	for _, tag := range account.Sent_Tag {
 		status = msg.AddTag(tag)
 	}

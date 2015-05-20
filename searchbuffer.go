@@ -130,6 +130,42 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 		if b.cursor >= 0 && b.cursor < len(b.messages) {
 			stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName(), b.database))
 		}
+	case "tag":
+		if len(b.messages) == 0 {
+			break
+		}
+		msg := b.messages[b.cursor]
+		msg.Freeze()
+
+		for _, tag := range args {
+			status := msg.AddTag(tag)
+			if status != 0 {
+				StatusLine = status.String()
+				break
+			}
+		}
+		status := msg.Thaw()
+		if status != 0 {
+			StatusLine = status.String()
+		}
+	case "untag":
+		if len(b.messages) == 0 {
+			break
+		}
+		msg := b.messages[b.cursor]
+		msg.Freeze()
+
+		for _, tag := range args {
+			status := msg.RemoveTag(tag)
+			if status != 0 {
+				StatusLine = status.String()
+				break
+			}
+		}
+		status := msg.Thaw()
+		if status != 0 {
+			StatusLine = status.String()
+		}
 	default:
 		return false
 	}
