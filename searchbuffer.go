@@ -5,6 +5,9 @@
 package main
 
 import (
+	"errors"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
@@ -28,16 +31,29 @@ func NewSearchBuffer(term string, db *notmuch.Database) *SearchBuffer {
 	buf.term = term
 	buf.database = db
 
-	_, h := termbox.Size()
-	buf.messages = make([]*notmuch.Message, 0, h)
-	buf.query = db.CreateQuery(term)
-	buf.msgit = buf.query.SearchMessages()
-
-	for i := 0; i < h && buf.msgit.Valid(); i++ {
-		buf.messages = append(buf.messages, buf.msgit.Get())
-		buf.msgit.MoveToNext()
-	}
+	buf.refreshQuery()
 	return buf
+}
+
+func tagString(msg *notmuch.Message) string {
+	if msg == nil {
+		panic("looked for tags of nil msg")
+	}
+
+	strs := make([]string, 0, 4)
+	tags := msg.GetTags()
+
+	for tags.Valid() {
+		tag := tags.Get()
+		if alias, exists := pconfig.TagAliases[tag]; exists {
+			tag = alias
+		}
+		if tag != "" {
+			strs = append(strs, tag)
+		}
+		tags.MoveToNext()
+	}
+	return strings.Join(strs, " ")
 }
 
 func (b *SearchBuffer) Draw() {
@@ -77,15 +93,23 @@ func (b *SearchBuffer) Draw() {
 		from := shortFrom(b.messages[i+offset].GetHeader("From"))
 		subj := b.messages[i+offset].GetHeader("Subject")
 
+		tags := tagString(b.messages[i+offset])
+
+		dateFg := config.Theme.Date
+		fromFg := config.Theme.From
+		subjFg := config.Theme.Subject
+		tagsFg := config.Theme.Tags
 		if i+offset == b.cursor {
-			printLine(1, i, date, -1, -1)
-			printLine(10, i, from, -1, -1)
-			printLine(11+len(from), i, subj, -1, -1)
-		} else {
-			printLine(1, i, date, config.Theme.Date, -1)
-			printLine(10, i, from, config.Theme.From, -1)
-			printLine(11+len(from), i, subj, config.Theme.Subject, -1)
+			dateFg = -1
+			fromFg = -1
+			subjFg = -1
+			tagsFg = -1
 		}
+		printLine(1, i, date, dateFg, -1)
+		printLine(10, i, tags, tagsFg, -1)
+		printLine(11+len(tags), i, from, fromFg, -1)
+		printLine(12+len(from)+len(tags), i, subj, subjFg, -1)
+
 	}
 }
 
@@ -99,6 +123,56 @@ func (b *SearchBuffer) Name() string {
 
 func (b *SearchBuffer) Close() {
 	b.query.Destroy()
+}
+
+func (b *SearchBuffer) tagCmd(cmd string, args []string) error {
+	if len(b.messages) == 0 {
+		return errors.New("No messages to tag")
+	}
+	db, status := notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 1)
+	if status != notmuch.STATUS_SUCCESS {
+		return errors.New(status.String())
+	}
+	defer db.Close()
+
+	msg, status := db.FindMessage(b.messages[b.cursor].GetMessageId())
+	if status != notmuch.STATUS_SUCCESS {
+		return errors.New(status.String())
+	}
+	msg.Freeze()
+
+	for _, tag := range args {
+		switch cmd {
+		case "tag":
+			status = msg.AddTag(tag)
+		case "untag":
+			status = msg.RemoveTag(tag)
+		}
+
+		if status != 0 {
+			return errors.New(status.String())
+		}
+	}
+	status = msg.Thaw()
+	if status != 0 {
+		return errors.New(status.String())
+	}
+	return nil
+}
+
+func (b *SearchBuffer) refreshQuery() {
+	if b.query != nil {
+		b.query.Destroy()
+	}
+	_, h := termbox.Size()
+	b.messages = make([]*notmuch.Message, 0, h)
+	b.query = b.database.CreateQuery(b.term)
+	b.msgit = b.query.SearchMessages()
+
+	for i := 0; i < h && b.msgit.Valid(); i++ {
+		b.messages = append(b.messages, b.msgit.Get())
+		b.msgit.MoveToNext()
+	}
 }
 
 func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) bool {
@@ -128,44 +202,15 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 		}
 	case "show":
 		if b.cursor >= 0 && b.cursor < len(b.messages) {
-			stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName(), b.database))
+			stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName()))
 		}
-	case "tag":
-		if len(b.messages) == 0 {
-			break
+	case "tag", "untag":
+		err := b.tagCmd(cmd, args)
+		if err != nil {
+			StatusLine = err.Error()
 		}
-		msg := b.messages[b.cursor]
-		msg.Freeze()
-
-		for _, tag := range args {
-			status := msg.AddTag(tag)
-			if status != 0 {
-				StatusLine = status.String()
-				break
-			}
-		}
-		status := msg.Thaw()
-		if status != 0 {
-			StatusLine = status.String()
-		}
-	case "untag":
-		if len(b.messages) == 0 {
-			break
-		}
-		msg := b.messages[b.cursor]
-		msg.Freeze()
-
-		for _, tag := range args {
-			status := msg.RemoveTag(tag)
-			if status != 0 {
-				StatusLine = status.String()
-				break
-			}
-		}
-		status := msg.Thaw()
-		if status != 0 {
-			StatusLine = status.String()
-		}
+	case "refresh":
+		b.refreshQuery()
 	default:
 		return false
 	}

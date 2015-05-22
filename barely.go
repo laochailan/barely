@@ -42,7 +42,7 @@ func main() {
 
 	database, status :=
 		notmuch.OpenDatabase(os.ExpandEnv(config.General.Database),
-			1)
+			0)
 	if status != 0 {
 		log.Fatal(status)
 	}

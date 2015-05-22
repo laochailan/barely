@@ -296,7 +296,13 @@ func (m *Mail) Encode() (string, error) {
 	return buffer.String(), err
 }
 
-func sendMail(m *Mail, db *notmuch.Database) error {
+func sendMail(m *Mail) error {
+	db, status := notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 1)
+	if status != notmuch.STATUS_SUCCESS {
+		return errors.New(status.String())
+	}
+	defer db.Close()
+
 	addrl, err := m.Header.AddressList("From")
 	if len(addrl) != 1 {
 		return errors.New("Invalid count of addresses in 'From' field.")

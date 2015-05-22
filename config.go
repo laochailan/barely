@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -68,6 +69,25 @@ type Account struct {
 	Draft_Dir        string
 }
 
+type TagAlias struct {
+	tag   string
+	alias string
+}
+
+func (t *TagAlias) UnmarshalText(text []byte) error {
+	str := string(text)
+	fields := strings.Fields(str)
+	if len(fields) > 2 || len(fields) == 0 {
+		return errors.New("Tag aliases must be of form 'tag alias'.")
+	}
+
+	t.tag = fields[0]
+	if len(fields) == 2 {
+		t.alias = fields[1]
+	}
+	return nil
+}
+
 // Config holds all configuration values.
 // Refer to gcfg documentation for the resulting config file syntax.
 type Config struct {
@@ -83,6 +103,7 @@ type Config struct {
 		Date      int
 		Subject   int
 		From      int
+		Tags      int
 
 		Error int
 
@@ -98,6 +119,16 @@ type Config struct {
 	}
 
 	Account map[string]*Account
+
+	Tags struct {
+		Alias []*TagAlias
+	}
+}
+
+// PostConfig contains post processed config fields, e.g. values
+// stored in maps for faster access
+type PostConfig struct {
+	TagAliases map[string]string
 }
 
 const (
@@ -105,6 +136,7 @@ const (
 )
 
 var config Config
+var pconfig PostConfig
 
 // default configuration
 const DefaultCfg = `# This is the default configuration file for barely.
@@ -115,16 +147,29 @@ const DefaultCfg = `# This is the default configuration file for barely.
 
 [general]
 # Location of the notmuch database
-database="$HOME/mail"
+database=$HOME/mail
 # First command to be executed on start. This should open a
 # new buffer. If it doesn't, a search buffer for "" is opened.
-initial-command="search tag:unread"
+initial-command=search tag:unread
+
+# For every address you want to send mail with, there has to be an
+# account section like this one. the addr, sendmail-command and
+# sent-dir are mandatory for sending.
+# draft-dir is mandatory for saving drafts of course.
+#
+# [account "example"]
+# addr = example@example.com
+# sendmail-command = msmtp --account=example -t
+# sent-dir = $HOME/mail/example/sent
+# draft-dir = $HOME/mail/example/draft
+# sent-tag = sent
+# sent-tag = example
 
 [commands]
 # program used to open all tpyes of attachments
-attachments="xdg-open"
+attachments=xdg-open
 # editor program
-editor="vim"
+editor=vim
 
 # This section describes the color theme. Colors are numbers
 # in the terminal 256 color cube.
@@ -134,6 +179,7 @@ bottombar = 241
 date = 103
 subject = 110
 from = 115
+tags = 244
 
 error = 88
 
@@ -161,6 +207,9 @@ key = down move down
 key = pageup move pageup
 key = pagedown move pagedown
 key = enter show
+key = s untag unread
+key = & tag deleted
+key = @ refresh
 
 [bindings "mail"]
 key = up move up
@@ -178,19 +227,22 @@ key = pagedown move pagedown
 key = enter edit
 key = y send
 
-# For every address you want to send mail with, there has to be an
-# account section like this one. the addr, sendmail-command and
-# sent-dir are mandatory for sending.
-# draft-dir is mandatory for saving drafts of course.
+# The tags section can be used to set display aliases for tags.
+# This can be used to hide or abbreviate common tags.
 #
-# [account "example"]
-# addr = example@example.com
-# sendmail-command = msmtp --account=example -t
-# sent-dir = $HOME/mail/example/sent
-# draft-dir = $HOME/mail/example/draft
-# sent-tag = sent
-# sent-tag = example
+# [tags]
+# alias = replied >
+# alias = attachment @
+# alias = sent  # empty alias means hiding tag
+
 `
+
+func preparePostConfig(pcfg *PostConfig, cfg *Config) {
+	pcfg.TagAliases = make(map[string]string)
+	for _, a := range cfg.Tags.Alias {
+		pcfg.TagAliases[a.tag] = a.alias
+	}
+}
 
 func LoadConfig() {
 	err := gcfg.ReadStringInto(&config, DefaultCfg)
@@ -202,6 +254,8 @@ func LoadConfig() {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	preparePostConfig(&pconfig, &config)
 }
 
 func getBinding(section string, Ch rune, Key termbox.Key) *KeyBinding {

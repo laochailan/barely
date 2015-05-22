@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
 	"github.com/nsf/termbox-go"
 )
 
@@ -22,8 +21,8 @@ type ComposeBuffer struct {
 	mb *MailBuffer
 }
 
-func NewComposeBuffer(m *Mail, db *notmuch.Database) *ComposeBuffer {
-	return &ComposeBuffer{NewMailBufferFromMail(m, db)}
+func NewComposeBuffer(m *Mail) *ComposeBuffer {
+	return &ComposeBuffer{NewMailBufferFromMail(m)}
 }
 
 func (b *ComposeBuffer) Draw() {
@@ -150,7 +149,7 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 	case "edit":
 		b.openEditor(stack)
 	case "send":
-		err := sendMail(b.mb.mail, b.mb.db)
+		err := sendMail(b.mb.mail)
 		if err != nil {
 			StatusLine = err.Error()
 		} else {
