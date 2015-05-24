@@ -78,7 +78,7 @@ func shortTime(date time.Time) string {
 	case now.YearDay()-date.YearDay() == 1:
 		return fmt.Sprintf("yest %02dh", date.Hour())
 	case now.YearDay()-date.YearDay() < 7:
-		return date.Format("Mo 15h")
+		return fmt.Sprintf("%s %dh", date.Weekday().String()[:2], date.Hour())
 	}
 	return date.Format("Jan 02")
 }
