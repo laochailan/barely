@@ -131,6 +131,7 @@ func (b *BufferStack) HandleEvent(event *termbox.Event) {
 		return
 	}
 	if event.Type == termbox.EventResize {
+		termbox.Flush()
 		for _, buf := range b.buffers {
 			buf.HandleCommand("resize", nil, b)
 		}
