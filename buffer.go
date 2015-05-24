@@ -100,6 +100,7 @@ func (b *BufferStack) refresh() {
 		_, h := termbox.Size()
 		printLine(0, h-1, StatusLine, -1, -1)
 	}
+	termbox.Flush()
 }
 
 func (b *BufferStack) handleCommand(cmd string, args []string) bool {
@@ -130,7 +131,6 @@ func (b *BufferStack) HandleEvent(event *termbox.Event) {
 		return
 	}
 	if event.Type == termbox.EventResize {
-		termbox.Flush()
 		for _, buf := range b.buffers {
 			buf.HandleCommand("resize", nil, b)
 		}

@@ -149,6 +149,8 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 	case "edit":
 		b.openEditor(stack)
 	case "send":
+		StatusLine = "Sending..."
+		stack.refresh()
 		err := sendMail(b.mb.mail)
 		if err != nil {
 			StatusLine = err.Error()
