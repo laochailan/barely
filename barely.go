@@ -10,10 +10,8 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
 	"time"
 
-	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
 	termbox "github.com/nsf/termbox-go"
 )
 
@@ -40,26 +38,18 @@ func main() {
 
 	LoadConfig()
 
-	database, status :=
-		notmuch.OpenDatabase(os.ExpandEnv(config.General.Database),
-			0)
-	if status != 0 {
-		log.Fatal(status)
-	}
-	defer database.Close()
-
 	err = termbox.Init()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	termbox.SetOutputMode(termbox.Output256)
-	buffers.Init(database)
+	buffers.Init()
 
 	for len(buffers.buffers) > 0 {
 		termbox.Flush()
 		event := termbox.PollEvent()
-		buffers.HandleEvent(&event, database)
+		buffers.HandleEvent(&event)
 	}
 	termbox.Close()
 	if len(logbuf.Bytes()) != 0 {

@@ -26,10 +26,15 @@ type SearchBuffer struct {
 	cursor int
 }
 
-func NewSearchBuffer(term string, db *notmuch.Database) *SearchBuffer {
+func NewSearchBuffer(term string) *SearchBuffer {
+	var status notmuch.Status
 	buf := new(SearchBuffer)
 	buf.term = term
-	buf.database = db
+
+	buf.database, status = notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 0)
+	if status != notmuch.STATUS_SUCCESS {
+		StatusLine = status.String()
+	}
 
 	buf.refreshQuery()
 	return buf
@@ -123,6 +128,7 @@ func (b *SearchBuffer) Name() string {
 
 func (b *SearchBuffer) Close() {
 	b.query.Destroy()
+	b.database.Close()
 }
 
 func (b *SearchBuffer) tagCmd(cmd string, args []string) error {
@@ -161,13 +167,24 @@ func (b *SearchBuffer) tagCmd(cmd string, args []string) error {
 }
 
 func (b *SearchBuffer) refreshQuery() {
+	var status notmuch.Status
 	if b.query != nil {
 		b.query.Destroy()
 	}
+	b.database.Close()
+	b.database, status = notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 0)
+	if status != notmuch.STATUS_SUCCESS {
+		StatusLine = status.String()
+		return
+	}
+
 	_, h := termbox.Size()
 	b.messages = make([]*notmuch.Message, 0, h)
 	b.query = b.database.CreateQuery(b.term)
 	b.msgit = b.query.SearchMessages()
+	if b.msgit == nil {
+		StatusLine = "Could not refresh buffer"
+	}
 
 	for i := 0; i < h && b.msgit.Valid(); i++ {
 		b.messages = append(b.messages, b.msgit.Get())
@@ -209,6 +226,8 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 		if err != nil {
 			StatusLine = err.Error()
 		}
+		b.refreshQuery()
+		b.Draw()
 	case "refresh":
 		b.refreshQuery()
 	default:

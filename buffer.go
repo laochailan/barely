@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
 	termbox "github.com/nsf/termbox-go"
 )
 
@@ -40,15 +39,15 @@ func invalidCommand(cmd string) {
 	StatusLine = "invalid command: " + cmd
 }
 
-func (b *BufferStack) Init(db *notmuch.Database) {
+func (b *BufferStack) Init() {
 	fields := strings.Fields(config.General.Initial_Command)
 	if len(fields) > 0 {
-		accept := b.handleCommand(fields[0], fields[1:], db)
+		accept := b.handleCommand(fields[0], fields[1:])
 		if !accept {
 			invalidCommand(fields[0])
 		}
 		if len(b.buffers) == 0 {
-			b.Push(NewSearchBuffer("", nil))
+			b.Push(NewSearchBuffer(""))
 		}
 	}
 }
@@ -103,7 +102,7 @@ func (b *BufferStack) refresh() {
 	}
 }
 
-func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Database) bool {
+func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 	switch cmd {
 	case "close":
 		b.Pop()
@@ -112,7 +111,7 @@ func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Datab
 			b.Pop()
 		}
 	case "search":
-		b.Push(NewSearchBuffer(strings.Join(args, " "), db))
+		b.Push(NewSearchBuffer(strings.Join(args, " ")))
 	case "compose":
 		b.Push(NewComposeBuffer(composeMail()))
 	case "help":
@@ -126,7 +125,7 @@ func (b *BufferStack) handleCommand(cmd string, args []string, db *notmuch.Datab
 	return true
 }
 
-func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
+func (b *BufferStack) HandleEvent(event *termbox.Event) {
 	if len(b.buffers) == 0 {
 		return
 	}
@@ -145,7 +144,7 @@ func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
 			if len(cmd) != 0 {
 				accept := b.buffers[len(b.buffers)-1].HandleCommand(cmd, args, b)
 				if !accept {
-					accept = b.handleCommand(cmd, args, db)
+					accept = b.handleCommand(cmd, args)
 				}
 				if !accept {
 					invalidCommand(cmd)
@@ -164,7 +163,7 @@ func (b *BufferStack) HandleEvent(event *termbox.Event, db *notmuch.Database) {
 			}
 			accept = b.buffers[len(b.buffers)-1].HandleCommand(cmd.Command, cmd.Args, b)
 		} else {
-			accept = b.handleCommand(cmd.Command, cmd.Args, db)
+			accept = b.handleCommand(cmd.Command, cmd.Args)
 		}
 		if !accept {
 			invalidCommand(cmd.Command)
