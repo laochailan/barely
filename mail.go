@@ -153,7 +153,7 @@ func composeMail() *Mail {
 	m.Header = make(mail.Header)
 
 	m.Header["MIME-Version"] = []string{"1.0"}
-	m.Header["User-Agent"] = []string{UserAgend}
+	m.Header["User-Agent"] = []string{UserAgent}
 
 	t := time.Now()
 	hostname, _ := os.Hostname()
