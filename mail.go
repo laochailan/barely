@@ -24,8 +24,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/djimenez/iconv-go"
 	"github.com/laochailan/barely/maildir"
 	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
+	"github.com/saintfish/chardet"
 	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
 
@@ -67,10 +69,37 @@ func readParts(reader io.Reader, boundary string, parts []Part) ([]Part, error) 
 			if err != nil {
 				return nil, err
 			}
+			slurp = convertToUtf8(slurp)
+
 			parts = append(parts, Part{p.Header, string(slurp)})
 		}
 	}
 	return parts, nil
+}
+
+// convertToUtf8 dectects the charset of the given plain text slice and converts it to utf-8
+// if necessary
+func convertToUtf8(text []byte) (converted []byte) {
+	detector := chardet.NewTextDetector()
+	res, err := detector.DetectBest(text)
+	if err != nil { // give up on error
+		return text
+	}
+
+	if res.Charset == "UTF-8" { // nothing to do
+		return text
+	}
+
+	conv, err := iconv.NewConverter(res.Charset, "UTF-8")
+	if err != nil {
+		return text
+	}
+	defer conv.Close()
+	convStr, err := conv.ConvertString(string(text))
+	if err != nil {
+		return text
+	}
+	return []byte(convStr)
 }
 
 // readMail reads a mail and parses it into decoded parts
@@ -238,6 +267,7 @@ func (m *Mail) Encode() (string, error) {
 		return "", errors.New("Error: message without content")
 	}
 
+	henc := qp.Q.NewHeaderEncoder("utf-8")
 	boundary := randomBoundary()
 
 	if len(m.Parts) == 1 {
@@ -249,7 +279,6 @@ func (m *Mail) Encode() (string, error) {
 	}
 
 	var buffer bytes.Buffer
-	henc := qp.Q.NewHeaderEncoder("utf-8")
 	headers := make([]string, 0, len(m.Header))
 
 	for key, val := range m.Header {
@@ -288,8 +317,12 @@ func (m *Mail) Encode() (string, error) {
 			if err != nil {
 				return "", err
 			}
+			writer := pw
+			if p.Header.Get("Content-Transfer-Encoding") == "quoted-printable" {
+				writer = qp.NewEncoder(pw)
+			}
 
-			pw.Write([]byte(p.Body))
+			writer.Write([]byte(p.Body))
 		}
 		mpw.Close()
 	}
