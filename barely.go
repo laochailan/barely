@@ -66,9 +66,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var i []byte
-	i[3] = 1
-
 	termbox.SetOutputMode(termbox.Output256)
 	buffers.Init()
 
