@@ -47,7 +47,7 @@ func (b *BufferStack) Init() {
 			invalidCommand(fields[0])
 		}
 		if len(b.buffers) == 0 {
-			b.Push(NewSearchBuffer(""))
+			b.Push(NewSearchBuffer("", STMessages))
 		}
 	}
 }
@@ -112,7 +112,9 @@ func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 			b.Pop()
 		}
 	case "search":
-		b.Push(NewSearchBuffer(strings.Join(args, " ")))
+		b.Push(NewSearchBuffer(strings.Join(args, " "), STThreads))
+	case "msearch":
+		b.Push(NewSearchBuffer(strings.Join(args, " "), STMessages))
 	case "compose":
 		b.Push(NewComposeBuffer(composeMail()))
 	case "help":
@@ -120,6 +122,10 @@ func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 	case "prompt":
 		StatusLine = ""
 		b.prompt.Activate(strings.Join(args, " "))
+	case "refresh":
+		for _, buf := range b.buffers {
+			buf.HandleCommand("refresh", nil, b)
+		}
 	default:
 		return false
 	}

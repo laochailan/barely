@@ -26,7 +26,7 @@ import (
 
 	"github.com/djimenez/iconv-go"
 	"github.com/laochailan/barely/maildir"
-	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
+	"github.com/laochailan/notmuch/bindings/go/src/notmuch"
 	"github.com/saintfish/chardet"
 	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )

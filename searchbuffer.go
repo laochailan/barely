@@ -10,26 +10,96 @@ import (
 	"strings"
 	"time"
 
-	"github.com/notmuch/notmuch/bindings/go/src/notmuch"
+	"github.com/laochailan/notmuch/bindings/go/src/notmuch"
 	termbox "github.com/nsf/termbox-go"
 )
+
+// Results is a general list iterator behaving like notmuch.Threads or notmuch.Messages
+type Results interface {
+	Valid() bool
+	Get() Result
+	MoveToNext()
+	Destroy()
+}
+
+type Result interface {
+	GetSubject() string
+	GetDate() int64
+	GetAuthor() string
+	GetTags() *notmuch.Tags
+}
+
+type ThreadResults struct {
+	*notmuch.Threads
+}
+
+func (tr *ThreadResults) Get() Result {
+	return &ThreadResult{tr.Threads.Get()}
+}
+
+type ThreadResult struct {
+	*notmuch.Thread
+}
+
+func (t *ThreadResult) GetDate() int64 {
+	return t.GetNewestDate()
+}
+
+func (t *ThreadResult) GetAuthor() string {
+	return t.GetAuthors()
+}
+
+type MessageResults struct {
+	*notmuch.Messages
+}
+
+func (mr *MessageResults) Get() Result {
+	return &MessageResult{mr.Messages.Get()}
+}
+
+type MessageResult struct {
+	*notmuch.Message
+}
+
+func (m *MessageResult) GetDate() int64 {
+	date, _ := m.Message.GetDate()
+	return date
+}
+
+func (m *MessageResult) GetAuthor() string {
+	return m.GetHeader("From")
+}
+
+func (m *MessageResult) GetSubject() string {
+	return m.GetHeader("Subject")
+}
 
 // SearchBuffer can be used to display a list of threads matching
 // a specific search term.
 type SearchBuffer struct {
-	term     string // Search term
+	term string // Search term
+	typ  SearchType
+
 	database *notmuch.Database
-	messages []*notmuch.Message
-	msgit    *notmuch.Messages
+	messages []Result
+	msgit    Results
 	query    *notmuch.Query
 
 	cursor int
 }
 
-func NewSearchBuffer(term string) *SearchBuffer {
+type SearchType int
+
+const (
+	STMessages SearchType = iota
+	STThreads
+)
+
+func NewSearchBuffer(term string, typ SearchType) *SearchBuffer {
 	var status notmuch.Status
 	buf := new(SearchBuffer)
 	buf.term = term
+	buf.typ = typ
 
 	buf.database, status = notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 0)
 	if status != notmuch.STATUS_SUCCESS {
@@ -40,7 +110,7 @@ func NewSearchBuffer(term string) *SearchBuffer {
 	return buf
 }
 
-func tagString(msg *notmuch.Message) string {
+func tagString(msg Result) string {
 	if msg == nil {
 		panic("looked for tags of nil msg")
 	}
@@ -93,10 +163,10 @@ func (b *SearchBuffer) Draw() {
 			continue
 		}
 
-		t, _ := b.messages[i+offset].GetDate()
+		t := b.messages[i+offset].GetDate()
 		date := shortTime(time.Unix(t, 0))
-		from := shortFrom(b.messages[i+offset].GetHeader("From"))
-		subj := b.messages[i+offset].GetHeader("Subject")
+		from := shortFrom(b.messages[i+offset].GetAuthor())
+		subj := b.messages[i+offset].GetSubject()
 
 		tags := tagString(b.messages[i+offset])
 
@@ -119,7 +189,11 @@ func (b *SearchBuffer) Draw() {
 }
 
 func (b *SearchBuffer) Title() string {
-	return "for \"" + b.term + "\""
+	msg := ""
+	if b.typ == STMessages {
+		msg = "messages "
+	}
+	return msg + "for \"" + b.term + "\""
 }
 
 func (b *SearchBuffer) Name() string {
@@ -141,28 +215,43 @@ func (b *SearchBuffer) tagCmd(cmd string, args []string) error {
 	}
 	defer db.Close()
 
-	msg, status := db.FindMessage(b.messages[b.cursor].GetMessageId())
-	if status != notmuch.STATUS_SUCCESS {
-		return errors.New(status.String())
+	queryStr := ""
+	if b.typ == STMessages {
+		queryStr = "id:" + b.messages[b.cursor].(*MessageResult).GetMessageId()
+	} else {
+		queryStr = "thread:" + b.messages[b.cursor].(*ThreadResult).GetThreadId()
 	}
-	msg.Freeze()
 
-	for _, tag := range args {
-		switch cmd {
-		case "tag":
-			status = msg.AddTag(tag)
-		case "untag":
-			status = msg.RemoveTag(tag)
+	query := db.CreateQuery(queryStr)
+	msgit := query.SearchMessages()
+	if msgit == nil {
+		return errors.New("Message not found")
+	}
+
+	for msgit.Valid() {
+		msg := msgit.Get()
+		msg.Freeze()
+
+		for _, tag := range args {
+			switch cmd {
+			case "tag":
+				status = msg.AddTag(tag)
+			case "untag":
+				status = msg.RemoveTag(tag)
+			}
+
+			if status != 0 {
+				return errors.New(status.String())
+			}
 		}
-
+		status = msg.Thaw()
 		if status != 0 {
 			return errors.New(status.String())
 		}
+		msgit.MoveToNext()
 	}
-	status = msg.Thaw()
-	if status != 0 {
-		return errors.New(status.String())
-	}
+	query.Destroy()
+
 	return nil
 }
 
@@ -179,9 +268,25 @@ func (b *SearchBuffer) refreshQuery() {
 	}
 
 	_, h := termbox.Size()
-	b.messages = make([]*notmuch.Message, 0, h)
+	b.messages = make([]Result, 0, h)
 	b.query = b.database.CreateQuery(b.term)
-	b.msgit = b.query.SearchMessages()
+
+	if b.typ == STMessages {
+		it := b.query.SearchMessages()
+		if it == nil {
+			b.msgit = nil
+		} else {
+			b.msgit = &MessageResults{it}
+		}
+	} else {
+		it := b.query.SearchThreads()
+		if it == nil {
+			b.msgit = nil
+		} else {
+			b.msgit = &ThreadResults{it}
+		}
+	}
+
 	if b.msgit == nil {
 		StatusLine = "Could not refresh buffer"
 	}
@@ -218,8 +323,14 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 			b.Draw()
 		}
 	case "show":
-		if b.cursor >= 0 && b.cursor < len(b.messages) {
-			stack.Push(NewMailBuffer(b.messages[b.cursor].GetFileName()))
+		if b.typ == STThreads { // open a list of messages in the thread instead
+			threadid := b.messages[b.cursor].(*ThreadResult).GetThreadId()
+			stack.Push(NewSearchBuffer("thread:"+threadid, STMessages))
+			break
+		} else if b.typ == STMessages {
+			if b.cursor >= 0 && b.cursor < len(b.messages) {
+				stack.Push(NewMailBuffer(b.messages[b.cursor].(*MessageResult).GetFileName()))
+			}
 		}
 	case "tag", "untag":
 		err := b.tagCmd(cmd, args)

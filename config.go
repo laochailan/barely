@@ -200,6 +200,7 @@ key = d close
 key = / prompt search
 key = : prompt
 key = ? help
+key = @ refresh
 
 [bindings "search"]
 key = up move up
@@ -209,7 +210,6 @@ key = pagedown move pagedown
 key = enter show
 key = s untag unread
 key = & tag deleted
-key = @ refresh
 
 [bindings "mail"]
 key = up move up
