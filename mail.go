@@ -120,7 +120,9 @@ func readMail(filename string) (*Mail, error) {
 
 	mediaType, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
 	if err != nil {
-		return nil, err
+		mediaType = "text/plain"
+		params = make(map[string]string)
+		params["charset"] = "utf-8"
 	}
 
 	var bodyReader io.Reader
