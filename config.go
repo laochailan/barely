@@ -150,7 +150,7 @@ const DefaultCfg = `# This is the default configuration file for barely.
 database=$HOME/mail
 # First command to be executed on start. This should open a
 # new buffer. If it doesn't, a search buffer for "" is opened.
-initial-command=search tag:unread
+initial-command=msearch tag:unread
 
 # For every address you want to send mail with, there has to be an
 # account section like this one. the addr, sendmail-command and
@@ -218,6 +218,10 @@ key = pageup move pageup
 key = pagedown move pagedown
 key = enter show
 key = r reply
+key = / prompt search
+key = | prompt search
+key = n search
+key = N rsearch
 
 [bindings "compose"]
 key = up move up

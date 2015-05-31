@@ -26,6 +26,8 @@ type MailBuffer struct {
 	partLines []int
 
 	tmpDir string
+
+	lastSearch string
 }
 
 func NewMailBuffer(filename string) *MailBuffer {
@@ -245,6 +247,59 @@ func openAttachment(p *Part, dir string) {
 	go cmd.Wait()
 }
 
+// searchCmd searches the mail body for a string and returns the cursor position for that string.
+// If reverse is true, the search is done backwards.
+func (b *MailBuffer) searchCmd(term string, reverse bool) int {
+	if len(term) == 0 {
+		StatusLine = "No search term given"
+		return b.cursor
+	}
+
+	runes := []rune(term)
+
+	w, _ := termbox.Size()
+	startidx := b.cursor * w
+
+	if !reverse {
+		startidx += w
+	}
+
+	hits := 0
+	endReached := false
+
+	idx := startidx
+	for hits < len(runes) {
+		if idx < 0 {
+			idx = len(b.buffer) - 1
+			endReached = true
+			StatusLine = "Search reached beginning of mail. Starting from end."
+		}
+		if idx >= len(b.buffer) {
+			idx = 0
+			endReached = true
+			StatusLine = "Search reached end of mail. Starting from beginning."
+		}
+		if idx == startidx && endReached {
+			StatusLine = "\"" + term + "\" not found"
+			return b.cursor
+		}
+
+		if b.buffer[idx].Ch == runes[hits] {
+			hits++
+		} else {
+			hits = 0
+		}
+
+		if reverse {
+			idx--
+		} else {
+			idx++
+		}
+	}
+
+	return (idx - hits) / w
+}
+
 func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) bool {
 	switch cmd {
 	case "move":
@@ -293,6 +348,18 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 	case "reply":
 		reply := composeReply(b.mail)
 		stack.Push(NewComposeBuffer(reply))
+	case "search":
+		if len(args) > 0 {
+			b.lastSearch = strings.Join(args, " ")
+		}
+		b.cursor = b.searchCmd(b.lastSearch, false)
+		b.Draw()
+	case "rsearch":
+		if len(args) > 0 {
+			b.lastSearch = strings.Join(args, " ")
+		}
+		b.cursor = b.searchCmd(b.lastSearch, true)
+		b.Draw()
 	default:
 		return false
 	}

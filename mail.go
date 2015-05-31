@@ -217,7 +217,7 @@ func composeReply(m *Mail) *Mail {
 	partHeader := make(textproto.MIMEHeader)
 	partHeader["Content-Type"] = []string{"text/plain; charset=\"utf-8\""}
 	partHeader["Content-Transfer-Encoding"] = []string{"quoted-printable"}
-	reply.Parts = []Part{Part{partHeader, replyBuf.String()}}
+	reply.Parts = []Part{{partHeader, replyBuf.String()}}
 
 	return reply
 }
