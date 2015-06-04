@@ -2,6 +2,7 @@
 // Use of this source code is governed by the MIT-styled
 // license that can be found in the LICENSE file.
 
+// barely is a notmuch-frontend inspired by alot.
 package main
 
 import (
@@ -18,8 +19,14 @@ import (
 )
 
 const (
-	Version       = "0.1"
-	UserAgent     = "barely/" + Version
+	// Version is the version number of barely.
+	Version = "0.1"
+
+	// UserAgent is the User Agent string attached to mail messages.
+	UserAgent = "barely/" + Version
+
+	// StderrLogFile is a file in the temporary files directory
+	// where Xapians messy stderr output gets redirected to.
 	StderrLogFile = "barely.log"
 )
 

@@ -17,26 +17,32 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+// ComposeBuffer is a MailBuffer that allows editing and sending the viewed message.
 type ComposeBuffer struct {
 	mb *MailBuffer
 }
 
+// NewComposeBuffer creates a new Composebuffer for displaying a mail.
 func NewComposeBuffer(m *Mail) *ComposeBuffer {
 	return &ComposeBuffer{NewMailBufferFromMail(m)}
 }
 
+// Draw draws the buffer content.
 func (b *ComposeBuffer) Draw() {
 	b.mb.Draw()
 }
 
+// Title returns the buffer's title string.
 func (b *ComposeBuffer) Title() string {
 	return b.mb.mail.Header.Get("Message-ID")
 }
 
+// Name returns the buffer's name.
 func (b *ComposeBuffer) Name() string {
 	return "compose"
 }
 
+// Close closes the buffer.
 func (b *ComposeBuffer) Close() {
 	b.mb.Close()
 }
@@ -143,6 +149,7 @@ func (b *ComposeBuffer) openEditor(stack *BufferStack) {
 	stack.refresh()
 }
 
+// HandleCommand executes buffer local commands.
 func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) bool {
 	switch cmd {
 	case "reply", "raw": // disallow invalid commands in compose mode

@@ -31,11 +31,14 @@ import (
 	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
 
+// Part represents a multipart part. Messages that do not have multipart content
+// are still represented as multipart messages with one part internally.
 type Part struct {
 	Header textproto.MIMEHeader
 	Body   string
 }
 
+// Mail represents the content of one mail message.
 type Mail struct {
 	Header mail.Header
 	Parts  []Part
@@ -263,7 +266,7 @@ func (m *Mail) attachFile(filename string) error {
 	return nil
 }
 
-// encodeMail encodes a Mail structure to 7bit text.
+// Encode encodes a Mail structure to 7bit text.
 func (m *Mail) Encode() (string, error) {
 	if len(m.Parts) == 0 {
 		return "", errors.New("Error: message without content")

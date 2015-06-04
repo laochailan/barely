@@ -10,15 +10,18 @@ import (
 	termbox "github.com/nsf/termbox-go"
 )
 
+// Prompt represents the command prompt at the bottom of the screen.
 type Prompt struct {
 	text   []rune
 	cursor int
 }
 
+// Active returns true if the prompt is on and false if it is off.
 func (p *Prompt) Active() bool {
 	return p.text != nil
 }
 
+// Draw draws the prompt.
 func (p *Prompt) Draw() {
 	w, h := termbox.Size()
 	printLine(0, h-1, ":"+string(p.text)+" ", -1, -1)
@@ -49,6 +52,8 @@ func (p *Prompt) delChar() {
 	}
 }
 
+// HandleEvent handles termbox events. If the prompt is active, key bindings do not work
+// and this function gets all the key events.
 func (p *Prompt) HandleEvent(e *termbox.Event) (string, []string) {
 	if e.Ch == 0 {
 		switch e.Key {
@@ -90,6 +95,7 @@ func (p *Prompt) HandleEvent(e *termbox.Event) (string, []string) {
 	return "", nil
 }
 
+// Activate switches on the prompt with an initial string.
 func (p *Prompt) Activate(startstr string) {
 	p.text = append(p.text, []rune(startstr+" ")...)
 	if startstr == "" {

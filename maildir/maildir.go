@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT-styled
 // license that can be found in the LICENSE file.
 
-// Maildir provides simple routines to add messages to a Maildir.
+// Package maildir provides simple routines to add messages to a Maildir.
 package maildir
 
 import (

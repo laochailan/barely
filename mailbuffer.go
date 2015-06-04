@@ -30,6 +30,7 @@ type MailBuffer struct {
 	lastSearch string
 }
 
+// NewMailBuffer creates a MailBuffer from a mail file called filename.
 func NewMailBuffer(filename string) *MailBuffer {
 	m, err := readMail(filename)
 	if err != nil {
@@ -43,6 +44,7 @@ func NewMailBuffer(filename string) *MailBuffer {
 	return buf
 }
 
+// NewMailBufferFromMail creates a MailBuffer from a Mail structure.
 func NewMailBufferFromMail(m *Mail) *MailBuffer {
 	buf := new(MailBuffer)
 	var err error
@@ -160,6 +162,7 @@ func (b *MailBuffer) drawHeader() {
 	drawField(3, "Subject", getHeader("Subject"))
 }
 
+// Draw draws the content of the buffer.
 func (b *MailBuffer) Draw() {
 	w, h := termbox.Size()
 	cbuf := termbox.CellBuffer()
@@ -191,18 +194,22 @@ func (b *MailBuffer) Draw() {
 
 }
 
+// Title returns the title string of the buffer.
 func (b *MailBuffer) Title() string {
 	return "reading " + b.mail.Header.Get("Message-ID")
 }
 
+// Name returns the name string of the buffer.
 func (b *MailBuffer) Name() string {
 	return "mail"
 }
 
+// Close closes the buffer.
 func (b *MailBuffer) Close() {
 	os.RemoveAll(b.tmpDir)
 }
 
+// attachmentName returns the filename of a part if present in its headers or "" if not.
 func attachmentName(p *Part) string {
 	_, params, err := mime.ParseMediaType(p.Header.Get("Content-Type"))
 	if err != nil {
@@ -218,6 +225,10 @@ func attachmentName(p *Part) string {
 	return params["filename"]
 }
 
+// openAttachment decodes a part to a temporary file and opens the configured program
+// for handling that file.
+//
+// The program runs in the background and openAttachment returns immediately.
 func openAttachment(p *Part, dir string) {
 	name := attachmentName(p)
 	if name == "" {
@@ -300,6 +311,7 @@ func (b *MailBuffer) searchCmd(term string, reverse bool) int {
 	return (idx - hits) / w
 }
 
+// HandleCommand handles buffer local commands.
 func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack) bool {
 	switch cmd {
 	case "move":

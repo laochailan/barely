@@ -25,6 +25,7 @@ var specialKeys = map[string]termbox.Key{
 	"enter":    termbox.KeyEnter,
 }
 
+// KeyBinding represents a single keybinding.
 type KeyBinding struct {
 	Ch      rune
 	Key     termbox.Key // for nonprintables
@@ -34,6 +35,7 @@ type KeyBinding struct {
 	Args    []string
 }
 
+// UnmarshalText implements the encoding.TextUnmarshaller interface.
 func (k *KeyBinding) UnmarshalText(text []byte) error {
 	str := string(text)
 	fields := strings.Fields(str)
@@ -57,10 +59,12 @@ func (k *KeyBinding) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// KeyBindings represent a set of keybindings.
 type KeyBindings struct {
 	Key []*KeyBinding
 }
 
+// Account represents a mail account set up to send mail.
 type Account struct {
 	Addr             string
 	Sendmail_Command string
@@ -69,11 +73,13 @@ type Account struct {
 	Draft_Dir        string
 }
 
+// TagAlias represents an alias for tags.
 type TagAlias struct {
 	tag   string
 	alias string
 }
 
+// UnmarshalText implements the encoding.TextUnmarshaller interface.
 func (t *TagAlias) UnmarshalText(text []byte) error {
 	str := string(text)
 	fields := strings.Fields(str)
@@ -248,6 +254,8 @@ func preparePostConfig(pcfg *PostConfig, cfg *Config) {
 	}
 }
 
+// LoadConfig loads the configuration from the standard configuration file path and sets the
+// global config struct.
 func LoadConfig() {
 	err := gcfg.ReadStringInto(&config, DefaultCfg)
 	if err != nil {
@@ -262,6 +270,10 @@ func LoadConfig() {
 	preparePostConfig(&pconfig, &config)
 }
 
+// getBinding returns a key binding fitting a pressed key (Ch, Key) for a specific section.
+// If no such binding exists, it returns nil.
+//
+// Global bindings are associated to the section "".
 func getBinding(section string, Ch rune, Key termbox.Key) *KeyBinding {
 	sec := config.Bindings[section]
 	if sec == nil {
@@ -277,6 +289,7 @@ func getBinding(section string, Ch rune, Key termbox.Key) *KeyBinding {
 	return nil
 }
 
+// getAccount fetches an account for a given mail address.
 func getAccount(addr string) *Account {
 	for _, val := range config.Account {
 		if val.Addr == addr {

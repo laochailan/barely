@@ -39,6 +39,7 @@ func invalidCommand(cmd string) {
 	StatusLine = "invalid command: " + cmd
 }
 
+// Init initializes the BufferStack and executes the initial command set in Config.
 func (b *BufferStack) Init() {
 	fields := strings.Fields(config.General.Initial_Command)
 	if len(fields) > 0 {
@@ -52,6 +53,7 @@ func (b *BufferStack) Init() {
 	}
 }
 
+// Push pushes a new buffer on the stack. Focus is changed to that buffer.
 func (b *BufferStack) Push(n Buffer) {
 	for i, buf := range b.buffers {
 		// If the buffer already exists, change to it instead.
@@ -67,9 +69,10 @@ func (b *BufferStack) Push(n Buffer) {
 	b.refresh()
 }
 
-// This string will be displayed at the bottom of the screen. useful for error messages.
+// StatusLine is displayed at the bottom of the screen. useful for error messages.
 var StatusLine string
 
+// Pop pops the last buffer from the stack.
 func (b *BufferStack) Pop() {
 	if len(b.buffers) == 0 {
 		return
@@ -79,6 +82,7 @@ func (b *BufferStack) Pop() {
 	b.refresh()
 }
 
+// refresh clears the terminal and redraws everything.
 func (b *BufferStack) refresh() {
 	termbox.Clear(0, 0)
 	if len(b.buffers) == 0 {
@@ -103,6 +107,7 @@ func (b *BufferStack) refresh() {
 	termbox.Flush()
 }
 
+// handleCommand executes global commands.
 func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 	switch cmd {
 	case "close":
@@ -132,6 +137,7 @@ func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 	return true
 }
 
+// HandleEvent handles termbox events and invokes commands if their keybinding was pressed.
 func (b *BufferStack) HandleEvent(event *termbox.Event) {
 	if len(b.buffers) == 0 {
 		return
