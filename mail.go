@@ -251,6 +251,7 @@ func (m *Mail) attachFile(filename string) error {
 	if err != nil {
 		return err
 	}
+	enc.Close()
 	typ := mime.TypeByExtension(filepath.Ext(filename))
 	name := filepath.Base(filename)
 	if typ == "" {

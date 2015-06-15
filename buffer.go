@@ -131,6 +131,7 @@ func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 		for _, buf := range b.buffers {
 			buf.HandleCommand("refresh", nil, b)
 		}
+		b.refresh()
 	default:
 		return false
 	}
