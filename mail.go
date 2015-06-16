@@ -395,5 +395,14 @@ func sendMail(m *Mail) error {
 		return errors.New(status.String())
 	}
 
+	// TODO: maybe make this cleaner.
+	if len(m.Parts) > 1 {
+		status = msg.AddTag("attachment")
+	}
+
+	if status != notmuch.STATUS_SUCCESS {
+		return errors.New(status.String())
+	}
+
 	return nil
 }

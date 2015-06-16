@@ -301,9 +301,13 @@ func (b *SearchBuffer) refreshQuery() {
 		StatusLine = "Could not refresh buffer"
 	}
 
-	for i := 0; i < h && b.msgit.Valid(); i++ {
+	for i := 0; i <= b.cursor && b.msgit.Valid(); i++ {
 		b.messages = append(b.messages, b.msgit.Get())
 		b.msgit.MoveToNext()
+	}
+
+	if b.cursor >= len(b.messages) {
+		b.cursor = max(0, len(b.messages)-1)
 	}
 }
 
