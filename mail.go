@@ -173,8 +173,16 @@ func composeMail() *Mail {
 func composeReply(m *Mail) *Mail {
 	reply := composeMail()
 
-	reply.Header["To"] = []string{m.Header.Get("From")}
-	reply.Header["From"] = []string{m.Header.Get("To")}
+	to, _, err := qp.DecodeHeader(m.Header.Get("From"))
+	if err != nil {
+		to = m.Header.Get("From")
+	}
+	from, _, err := qp.DecodeHeader(m.Header.Get("To"))
+	if err != nil {
+		from = m.Header.Get("To")
+	}
+	reply.Header["To"] = []string{to}
+	reply.Header["From"] = []string{from}
 	reply.Header["In-Reply-To"] = []string{m.Header.Get("Message-ID")}
 
 	refs := m.Header["References"]
@@ -186,7 +194,10 @@ func composeReply(m *Mail) *Mail {
 	newrefs = append(newrefs, m.Header.Get("Message-ID"))
 	reply.Header["References"] = newrefs
 
-	subj := m.Header.Get("Subject")
+	subj, _, err := qp.DecodeHeader(m.Header.Get("Subject"))
+	if err != nil {
+		subj = m.Header.Get("Subject")
+	}
 	if lower := strings.ToLower(subj); !strings.HasPrefix(lower, "re:") &&
 		!strings.HasPrefix(lower, "aw:") {
 		subj = "Re: " + subj
@@ -246,7 +257,8 @@ func (m *Mail) attachFile(filename string) error {
 	}
 
 	var buf bytes.Buffer
-	enc := base64.NewEncoder(base64.StdEncoding, &buf)
+	nlInsert := newNewlineInserter(&buf, 78)
+	enc := base64.NewEncoder(base64.StdEncoding, nlInsert)
 	_, err = io.Copy(enc, file)
 	if err != nil {
 		return err
@@ -405,4 +417,40 @@ func sendMail(m *Mail) error {
 	}
 
 	return nil
+}
+
+// inserts a newline character after lineLength bytes. only for ascii because in wider
+// encoding runes could be chopped up.
+type newlineInserter struct {
+	w          io.Writer
+	lineLength int
+	counter    int
+}
+
+func newNewlineInserter(w io.Writer, lineLength int) *newlineInserter {
+	return &newlineInserter{w, lineLength, 0}
+}
+
+func (n *newlineInserter) Write(data []byte) (int, error) {
+	written := 0
+	for n.counter+len(data) > n.lineLength {
+		num, err := n.w.Write(data[:n.lineLength-n.counter])
+		written += num
+		if err != nil {
+			return written, err
+		}
+		num, err = n.w.Write([]byte{'\n'})
+		written += num
+		if err != nil {
+			return written, err
+		}
+
+		data = data[n.lineLength-n.counter:]
+		n.counter = 0
+	}
+
+	num, err := n.w.Write(data)
+	written += num
+	n.counter += num
+	return written, err
 }
