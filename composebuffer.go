@@ -177,11 +177,13 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 			StatusLine = "attached \"" + strings.Join(args, " ") + "\""
 		}
 		b.mb.refreshBuf()
+		b.Draw()
 	case "deattach":
 		if len(b.mb.mail.Parts) > 1 {
 			b.mb.mail.Parts = b.mb.mail.Parts[:len(b.mb.mail.Parts)-1]
 		}
 		b.mb.refreshBuf()
+		b.Draw()
 	default:
 		return b.mb.HandleCommand(cmd, args, stack)
 	}
