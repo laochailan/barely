@@ -171,12 +171,13 @@ func (b *BufferStack) HandleEvent(event *termbox.Event) {
 		cmd := getBinding("", event.Ch, event.Key)
 		accept := false
 		if cmd == nil {
-			cmd := getBinding(b.buffers[len(b.buffers)-1].Name(), event.Ch, event.Key)
+			cmd = getBinding(b.buffers[len(b.buffers)-1].Name(), event.Ch, event.Key)
 			if cmd == nil {
 				return
 			}
-			accept = b.buffers[len(b.buffers)-1].HandleCommand(cmd.Command, cmd.Args, b)
-		} else {
+		}
+		accept = b.buffers[len(b.buffers)-1].HandleCommand(cmd.Command, cmd.Args, b)
+		if !accept {
 			accept = b.handleCommand(cmd.Command, cmd.Args)
 		}
 		if !accept {
