@@ -354,7 +354,7 @@ func (b *SearchBuffer) HandleCommand(cmd string, args []string, stack *BufferSta
 		}
 		b.refreshQuery()
 		b.Draw()
-	case "refresh":
+	case "_refresh":
 		b.refreshQuery()
 	default:
 		return false

@@ -128,8 +128,9 @@ func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 		StatusLine = ""
 		b.prompt.Activate(strings.Join(args, " "))
 	case "refresh":
+		StatusLine = "view refreshed."
 		for _, buf := range b.buffers {
-			buf.HandleCommand("refresh", nil, b)
+			buf.HandleCommand("_refresh", nil, b)
 		}
 		b.refresh()
 	default:
