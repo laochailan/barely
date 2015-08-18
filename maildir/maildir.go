@@ -28,7 +28,7 @@ func key() (string, error) {
 	}
 
 	t := time.Now()
-	return fmt.Sprintf("%v.M%vP%vR%v.%v", t.Unix(), t.Nanosecond()/1000, os.Getpid(), buf, hostname), nil
+	return fmt.Sprintf("%v.M%vP%vR%x.%v", t.Unix(), t.Nanosecond()/1000, os.Getpid(), string(buf[:]), hostname), nil
 }
 
 // Store stores a message an a given maildir.
