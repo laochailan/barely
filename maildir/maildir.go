@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -74,41 +73,4 @@ func Store(maildir string, mail []byte, flags string) (filename string, err erro
 	}
 
 	return filename, nil
-}
-
-func flagName(path string, flag byte, on bool) (string, error) {
-	idx := strings.LastIndex(path, ":2,")
-	if idx == -1 {
-		return "", fmt.Errorf("'%s' does not contain maildir flags", path)
-	}
-
-	flagstr := path[idx+3:]
-	if i := strings.IndexByte(flagstr, flag); i != -1 {
-		if !on {
-			flagstr = flagstr[:i] + flagstr[i+1:]
-		}
-	} else if on {
-		i = strings.IndexFunc(flagstr, func(r rune) bool { return r > rune(flag) })
-		if i == -1 {
-			i = 0
-		}
-		flagstr = flagstr[:i] + string(flag) + flagstr[i:]
-	}
-
-	newName := path[:idx+3] + flagstr
-	return newName, nil
-}
-
-// Flag turns a maildir flag on or off on the mail stored in path.
-func Flag(path string, flag byte, on bool) error {
-	_, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-	newPath, err := flagName(path, flag, on)
-	if err != nil {
-		return err
-	}
-	err = os.Rename(path, newPath)
-	return err
 }
