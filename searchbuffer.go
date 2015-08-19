@@ -257,6 +257,12 @@ func (b *SearchBuffer) tagCmd(cmd string, tags []string) error {
 		if status != 0 {
 			return errors.New(status.String())
 		}
+		if config.General.Synchronize_Flags {
+			status = msg.TagsToMaildirFlags()
+			if status != 0 {
+				return errors.New(status.String())
+			}
+		}
 		msgit.MoveToNext()
 	}
 	query.Destroy()

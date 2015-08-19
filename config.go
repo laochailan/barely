@@ -98,8 +98,9 @@ func (t *TagAlias) UnmarshalText(text []byte) error {
 // Refer to gcfg documentation for the resulting config file syntax.
 type Config struct {
 	General struct {
-		Database        string
-		Initial_Command string
+		Database          string
+		Initial_Command   string
+		Synchronize_Flags bool
 	}
 
 	Bindings map[string]*KeyBindings
@@ -157,6 +158,9 @@ database=$HOME/mail
 # First command to be executed on start. This should open a
 # new buffer. If it doesn't, a search buffer for "" is opened.
 initial-command=msearch tag:unread
+# Whether barely should add matching maildir tags after changing
+# message tags.
+synchronize-flags=true
 
 # For every address you want to send mail with, there has to be an
 # account section like this one. the addr, sendmail-command and
