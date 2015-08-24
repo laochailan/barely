@@ -88,6 +88,7 @@ func (b *BufferStack) refresh() {
 	if len(b.buffers) == 0 {
 		return
 	}
+	b.buffers[len(b.buffers)-1].HandleCommand("_refresh", nil, b)
 	b.buffers[len(b.buffers)-1].Draw()
 	w, h := termbox.Size()
 	cbuf := termbox.CellBuffer()
