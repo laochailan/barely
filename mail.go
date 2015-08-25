@@ -348,11 +348,6 @@ func (m *Mail) Encode() (string, error) {
 }
 
 func sendMail(m *Mail) error {
-	db, status := notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 1)
-	if status != notmuch.STATUS_SUCCESS {
-		return errors.New(status.String())
-	}
-	defer db.Close()
 
 	addrl, err := m.Header.AddressList("From")
 	if len(addrl) != 1 {
@@ -390,6 +385,12 @@ func sendMail(m *Mail) error {
 	if err != nil {
 		return err
 	}
+
+	db, status := notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 1)
+	if status != notmuch.STATUS_SUCCESS {
+		return errors.New(status.String())
+	}
+	defer db.Close()
 
 	msg, status := db.AddMessage(filename)
 	if status != notmuch.STATUS_SUCCESS {

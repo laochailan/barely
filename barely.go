@@ -30,6 +30,8 @@ const (
 	StderrLogFile = "barely.log"
 )
 
+var logbuf bytes.Buffer
+
 // redirect panics to stdout
 func recoverPanic() {
 	if r := recover(); r != nil {
@@ -38,6 +40,10 @@ func recoverPanic() {
 		buf := make([]byte, 2048)
 		l := runtime.Stack(buf, true)
 		fmt.Println(string(buf[:l]))
+	}
+	if len(logbuf.Bytes()) != 0 {
+		fmt.Println("Debug log:")
+		fmt.Print(logbuf.String())
 	}
 }
 
@@ -53,7 +59,6 @@ func main() {
 	}
 
 	var buffers BufferStack
-	var logbuf bytes.Buffer
 	var err error
 
 	stderrFile, err := os.Create(os.TempDir() + "/" + StderrLogFile)
@@ -93,8 +98,4 @@ func main() {
 		}
 	}
 
-	if len(logbuf.Bytes()) != 0 {
-		fmt.Println("Debug log:")
-		fmt.Print(logbuf.String())
-	}
 }
