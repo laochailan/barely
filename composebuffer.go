@@ -94,7 +94,7 @@ func parseEditString(filename string, m *Mail) error {
 	scanner := bufio.NewScanner(file)
 	scanHeaders := true
 	for scanner.Scan() {
-		if len(scanner.Bytes()) == 0 {
+		if len(scanner.Bytes()) == 0 && scanHeaders {
 			scanHeaders = false // don't scan headers after new line.
 			continue
 		}
