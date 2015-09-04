@@ -54,7 +54,10 @@ func NewMailBufferFromMail(m *Mail) *MailBuffer {
 	buf.cursor = 0
 	buf.refreshBuf()
 
-	buf.tmpDir, err = ioutil.TempDir("", "barely")
+	err = os.MkdirAll(tmpDir(), 0755)
+	if err == nil {
+		buf.tmpDir, err = ioutil.TempDir(tmpDir(), "mail")
+	}
 	if err != nil {
 		StatusLine = "Could not open TempDir: " + err.Error()
 	}

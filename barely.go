@@ -47,6 +47,10 @@ func recoverPanic() {
 	}
 }
 
+func tmpDir() string {
+	return os.TempDir() + fmt.Sprintf("/barely-%d", os.Getpid())
+}
+
 func main() {
 	defer recoverPanic()
 
@@ -63,7 +67,7 @@ func main() {
 
 	stderrFile, err := os.Create(os.TempDir() + "/" + StderrLogFile)
 	if err == nil {
-		os.Stderr = stderrFile
+		//	os.Stderr = stderrFile
 	} else {
 		fmt.Println(err)
 	}
@@ -98,4 +102,9 @@ func main() {
 		}
 	}
 
+	// remove the temporary directory
+	err = os.RemoveAll(tmpDir())
+	if err != nil {
+		log.Println("Could not remove temporary files: " + err.Error())
+	}
 }

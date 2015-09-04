@@ -96,6 +96,7 @@ func parseEditString(filename string, m *Mail) error {
 	for scanner.Scan() {
 		if len(scanner.Bytes()) == 0 {
 			scanHeaders = false // don't scan headers after new line.
+			continue
 		}
 		if scanHeaders {
 			toks := strings.SplitN(scanner.Text(), ":", 2)
