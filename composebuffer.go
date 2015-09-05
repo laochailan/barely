@@ -171,7 +171,7 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 			break
 		}
 
-		err := b.mb.mail.attachFile(strings.Join(args, " "))
+		err := b.mb.mail.attachFile(expandEnvHome(strings.Join(args, " ")))
 		if err != nil {
 			StatusLine = err.Error()
 		} else {

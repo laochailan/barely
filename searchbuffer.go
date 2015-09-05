@@ -6,7 +6,6 @@ package main
 
 import (
 	"errors"
-	"os"
 	"strings"
 	"time"
 
@@ -104,7 +103,7 @@ func NewSearchBuffer(term string, typ SearchType) *SearchBuffer {
 	buf.term = term
 	buf.typ = typ
 
-	buf.database, status = notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 0)
+	buf.database, status = notmuch.OpenDatabase(expandEnvHome(config.General.Database), 0)
 	if status != notmuch.STATUS_SUCCESS {
 		StatusLine = status.String()
 	}
@@ -218,7 +217,7 @@ func (b *SearchBuffer) tagCmd(cmd string, tags []string) error {
 	if len(b.messages) == 0 {
 		return errors.New("No messages to tag")
 	}
-	db, status := notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 1)
+	db, status := notmuch.OpenDatabase(expandEnvHome(config.General.Database), 1)
 	if status != notmuch.STATUS_SUCCESS {
 		return errors.New(status.String())
 	}
@@ -277,7 +276,7 @@ func (b *SearchBuffer) refreshQuery() {
 		b.query.Destroy()
 	}
 	b.database.Close()
-	b.database, status = notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 0)
+	b.database, status = notmuch.OpenDatabase(expandEnvHome(config.General.Database), 0)
 	if status != notmuch.STATUS_SUCCESS {
 		StatusLine = status.String()
 		return

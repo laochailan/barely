@@ -154,7 +154,7 @@ const DefaultCfg = `# This is the default configuration file for barely.
 
 [general]
 # Location of the notmuch database
-database=$HOME/mail
+database=~/mail
 # First command to be executed on start. This should open a
 # new buffer. If it doesn't, a search buffer for "" is opened.
 initial-command=msearch tag:unread
@@ -240,6 +240,8 @@ key = pageup move pageup
 key = pagedown move pagedown
 key = enter edit
 key = y send
+key = a prompt attach
+key = A deattach
 
 # The tags section can be used to set display aliases for tags.
 # This can be used to hide or abbreviate common tags.

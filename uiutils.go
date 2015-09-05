@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -81,4 +82,12 @@ func shortTime(date time.Time) string {
 		return fmt.Sprintf("%s %dh", date.Weekday().String()[:2], date.Hour())
 	}
 	return date.Format("Jan 02")
+}
+
+//expandEnvHome expands environment viriables as well as ~/ in front of paths
+func expandEnvHome(str string) string {
+	if str[:2] == "~/" {
+		str = strings.Replace(str, "~", "${HOME}", 1)
+	}
+	return os.ExpandEnv(str)
 }

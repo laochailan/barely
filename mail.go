@@ -381,12 +381,12 @@ func sendMail(m *Mail) error {
 		return errors.New(string(output))
 	}
 
-	filename, err := maildir.Store(os.ExpandEnv(account.Sent_Dir), []byte(mailcont), "S")
+	filename, err := maildir.Store(expandEnvHome(account.Sent_Dir), []byte(mailcont), "S")
 	if err != nil {
 		return err
 	}
 
-	db, status := notmuch.OpenDatabase(os.ExpandEnv(config.General.Database), 1)
+	db, status := notmuch.OpenDatabase(expandEnvHome(config.General.Database), 1)
 	if status != notmuch.STATUS_SUCCESS {
 		return errors.New(status.String())
 	}
