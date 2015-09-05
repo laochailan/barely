@@ -114,9 +114,10 @@ func (b *BufferStack) handleCommand(cmd string, args []string) bool {
 	case "close":
 		b.Pop()
 	case "quit":
-		for len(b.buffers) > 0 {
-			b.Pop()
+		for _, buf := range b.buffers {
+			buf.Close()
 		}
+		b.buffers = nil
 	case "search":
 		b.Push(NewSearchBuffer(strings.Join(args, " "), STThreads))
 	case "msearch":
