@@ -260,6 +260,24 @@ func preparePostConfig(pcfg *PostConfig, cfg *Config) {
 	}
 }
 
+// removeDoubleBindings removes double KeyBindings in the config giving the last defined binding
+// priority.
+func removeDoubleBindings(cfg *Config) {
+	for name, binds := range cfg.Bindings {
+		newKey := make([]*KeyBinding, 0, len(binds.Key))
+		written := make(map[string]int)
+		for _, k := range binds.Key {
+			if idx, ok := written[k.KeyName]; ok {
+				newKey[idx] = k
+			} else {
+				written[k.KeyName] = len(newKey)
+				newKey = append(newKey, k)
+			}
+		}
+		cfg.Bindings[name].Key = newKey
+	}
+}
+
 // LoadConfig loads the configuration from the standard configuration file path and sets the
 // global config struct.
 func LoadConfig() {
@@ -273,6 +291,7 @@ func LoadConfig() {
 		fmt.Println(err)
 	}
 
+	removeDoubleBindings(&config)
 	preparePostConfig(&pconfig, &config)
 }
 
