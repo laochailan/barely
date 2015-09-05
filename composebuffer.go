@@ -183,6 +183,7 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 		if len(b.mb.mail.Parts) > 1 {
 			b.mb.mail.Parts = b.mb.mail.Parts[:len(b.mb.mail.Parts)-1]
 		}
+		StatusLine = "deattached attachment"
 		b.mb.refreshBuf()
 		b.Draw()
 	default:
