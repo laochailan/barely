@@ -304,6 +304,7 @@ func (b *SearchBuffer) refreshQuery() {
 
 	if b.msgit == nil {
 		StatusLine = "Could not refresh buffer"
+		return
 	}
 
 	for i := 0; i <= b.cursor && b.msgit.Valid(); i++ {
