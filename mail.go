@@ -300,13 +300,22 @@ func (m *Mail) Encode() (string, error) {
 	headers := make([]string, 0, len(m.Header))
 
 	for key, val := range m.Header {
+		for i, _ := range val {
+			if val[i] == "" {
+				continue
+			}
+
+			if qp.NeedsEncoding(val[i]) {
+				if key == "From" || key == "To" { // don't encode mail addresses.
+					split := strings.Split(val[i], " ")
+					val[i] = henc.Encode(strings.Join(split[:len(split)-1], " ")) + " " + split[len(split)-1]
+				} else {
+					val[i] = henc.Encode(val[i])
+				}
+			}
+		}
+
 		s := strings.Join(val, " ")
-		if s == "" {
-			continue
-		}
-		if qp.NeedsEncoding(s) {
-			s = henc.Encode(s)
-		}
 		headers = append(headers, key+": "+s+"\n")
 	}
 	sort.Strings(headers)
