@@ -451,7 +451,7 @@ func (n *newlineInserter) Write(data []byte) (int, error) {
 		if err != nil {
 			return written, err
 		}
-		num, err = n.w.Write([]byte{'\r', '\n'})
+		num, err = n.w.Write([]byte{'\n'})
 		written += num
 		if err != nil {
 			return written, err
