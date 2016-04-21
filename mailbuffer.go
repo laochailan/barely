@@ -52,7 +52,6 @@ func NewMailBufferFromMail(m *Mail) *MailBuffer {
 
 	buf.partLines = make([]int, len(buf.mail.Parts))
 	buf.cursor = 0
-	buf.refreshBuf()
 
 	err = os.MkdirAll(tmpDir(), 0755)
 	if err == nil {
@@ -61,6 +60,7 @@ func NewMailBufferFromMail(m *Mail) *MailBuffer {
 	if err != nil {
 		StatusLine = "Could not open TempDir: " + err.Error()
 	}
+	buf.refreshBuf()
 
 	return buf
 
@@ -107,6 +107,23 @@ func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int
 	return buf, y
 }
 
+func renderHtml(htmlCode, tmpFileName string) (plain string, err error) {
+	htmlfile, err := os.Create(tmpFileName)
+	if err != nil {
+		return "", err
+	}
+	_, err = htmlfile.WriteString(htmlCode)
+	if err != nil {
+		return "", err
+	}
+	htmlfile.Close()
+	cmd := strings.Split(config.Commands.HtmlDump, " ")
+	cmd = append(cmd, tmpFileName)
+	plainb, err := exec.Command(cmd[0], cmd[1:]...).Output()
+
+	return string(plainb), err
+}
+
 // refreshBuf preformats the whole mail so that redrawing it while scrolling is faster.
 func (b *MailBuffer) refreshBuf() {
 	w, _ := termbox.Size()
@@ -140,6 +157,17 @@ func (b *MailBuffer) refreshBuf() {
 		if contentType == "text/plain" {
 			b.buffer, y = formatPlain(b.buffer, y, w, part.Body)
 		}
+
+		// if the first part is html, convert to plain text
+		if contentType == "text/html" && i == 0 {
+			plain, err := renderHtml(part.Body, b.tmpDir+"/part0.html")
+			if err != nil {
+				StatusLine = "Could not display HTML: " + err.Error()
+			} else {
+				b.buffer, y = formatPlain(b.buffer, y, w, plain)
+			}
+		}
+
 	}
 	if b.cursor >= len(b.buffer)/w {
 		b.cursor = len(b.buffer)/w - 1

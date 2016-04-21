@@ -123,6 +123,8 @@ type Config struct {
 	Commands struct {
 		Attachments string
 		Editor      string
+
+		HtmlDump string
 	}
 
 	Account map[string]*Account
@@ -180,6 +182,8 @@ synchronize-flags=true
 attachments=xdg-open
 # editor program
 editor=vim
+# html to plaintext converter
+htmldump=w3m -dump
 
 # This section describes the color theme. Colors are numbers
 # in the terminal 256 color cube.
