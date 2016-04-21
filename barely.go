@@ -86,7 +86,10 @@ func main() {
 	buffers.Init()
 
 	for len(buffers.buffers) > 0 {
-		termbox.Flush()
+		err = termbox.Flush()
+		if err != nil {
+			log.Fatal(err)
+		}
 		event := termbox.PollEvent()
 		buffers.HandleEvent(&event)
 	}

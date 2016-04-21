@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"mime"
 	"mime/multipart"
+	"mime/quotedprintable"
 	"net/mail"
 	"net/textproto"
 	"os"
@@ -257,7 +258,7 @@ func (m *Mail) attachFile(filename string) error {
 	}
 
 	var buf bytes.Buffer
-	nlInsert := newNewlineInserter(&buf, 78)
+	nlInsert := newNewlineInserter(&buf, 76)
 	enc := base64.NewEncoder(base64.StdEncoding, nlInsert)
 	_, err = io.Copy(enc, file)
 	if err != nil {
@@ -300,7 +301,7 @@ func (m *Mail) Encode() (string, error) {
 	headers := make([]string, 0, len(m.Header))
 
 	for key, val := range m.Header {
-		for i, _ := range val {
+		for i := range val {
 			if val[i] == "" {
 				continue
 			}
@@ -331,7 +332,8 @@ func (m *Mail) Encode() (string, error) {
 	}
 
 	if len(m.Parts) == 1 {
-		writer := qp.NewEncoder(&buffer)
+		writer := quotedprintable.NewWriter(&buffer)
+		defer writer.Close()
 		_, err := writer.Write([]byte(m.Parts[0].Body))
 		if err != nil {
 			return "", err
@@ -449,7 +451,7 @@ func (n *newlineInserter) Write(data []byte) (int, error) {
 		if err != nil {
 			return written, err
 		}
-		num, err = n.w.Write([]byte{'\n'})
+		num, err = n.w.Write([]byte{'\r', '\n'})
 		written += num
 		if err != nil {
 			return written, err
