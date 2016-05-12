@@ -6,7 +6,6 @@ package main
 
 import (
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/laochailan/notmuch/bindings/go/src/notmuch"
@@ -112,25 +111,33 @@ func NewSearchBuffer(term string, typ SearchType) *SearchBuffer {
 	return buf
 }
 
-func tagString(msg result) string {
+func tagString(msg result) (strs []string, fgs []int) {
 	if msg == nil {
 		panic("looked for tags of nil msg")
 	}
 
-	strs := make([]string, 0, 4)
+	strs = make([]string, 0, 4)
+	fgs = make([]int, len(strs))
 	tags := msg.GetTags()
 
 	for tags.Valid() {
 		tag := tags.Get()
+
+		tagFg := config.Theme.Tags
+		if color, exists := pconfig.TagColors[tag]; exists {
+			tagFg = color
+		}
 		if alias, exists := pconfig.TagAliases[tag]; exists {
 			tag = alias
 		}
 		if tag != "" {
 			strs = append(strs, tag)
+			fgs = append(fgs, tagFg)
 		}
 		tags.MoveToNext()
 	}
-	return strings.Join(strs, " ")
+
+	return strs, fgs
 }
 
 // Draw draws the content of the buffer.
@@ -171,22 +178,31 @@ func (b *SearchBuffer) Draw() {
 		from := shortFrom(b.messages[i+offset].GetAuthor())
 		subj := b.messages[i+offset].GetSubject()
 
-		tags := tagString(b.messages[i+offset])
+		tags, tagFgs := tagString(b.messages[i+offset])
 
 		dateFg := config.Theme.Date
 		fromFg := config.Theme.From
 		subjFg := config.Theme.Subject
-		tagsFg := config.Theme.Tags
+
+		// Do not color line if we are under the cursor
 		if i+offset == b.cursor {
 			dateFg = -1
 			fromFg = -1
 			subjFg = -1
-			tagsFg = -1
 		}
 		printLine(1, i, date, dateFg, -1)
-		printLine(10, i, tags, tagsFg, -1)
-		printLine(11+len(tags), i, from, fromFg, -1)
-		printLine(12+len(from)+len(tags), i, subj, subjFg, -1)
+
+		tagLength := 0
+		for j := range tags {
+			if i+offset == b.cursor {
+				tagFgs[j] = -1
+			}
+
+			printLine(10+tagLength, i, tags[j], tagFgs[j], -1)
+			tagLength += len(tags[j]) + 1
+		}
+		printLine(11+tagLength, i, from, fromFg, -1)
+		printLine(12+len(from)+tagLength, i, subj, subjFg, -1)
 
 	}
 }

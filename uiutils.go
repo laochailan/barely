@@ -14,7 +14,7 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
-// printLineClr prints text at the position (x, y).
+// printLine prints text at the position (x, y).
 func printLine(x, y int, text string, fg, bg int) {
 	w, h := termbox.Size()
 

@@ -8,11 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
-	"code.google.com/p/gcfg"
 	termbox "github.com/nsf/termbox-go"
+	"gopkg.in/gcfg.v1"
 )
 
 var specialKeys = map[string]termbox.Key{
@@ -77,19 +78,28 @@ type Account struct {
 type TagAlias struct {
 	tag   string
 	alias string
+	color int
 }
 
 // UnmarshalText implements the encoding.TextUnmarshaller interface.
 func (t *TagAlias) UnmarshalText(text []byte) error {
 	str := string(text)
 	fields := strings.Fields(str)
-	if len(fields) > 2 || len(fields) == 0 {
-		return errors.New("Tag aliases must be of form 'tag alias'.")
+	if len(fields) > 3 || len(fields) == 0 {
+		return errors.New("Tag aliases must be of form 'tag [alias [color]]'.")
 	}
 
 	t.tag = fields[0]
-	if len(fields) == 2 {
+	if len(fields) >= 2 {
 		t.alias = fields[1]
+	}
+	t.color = -1
+	if len(fields) == 3 {
+		var err error
+		t.color, err = strconv.Atoi(fields[2])
+		if err != nil {
+			return errors.New("Tag aliases must be of form 'tag [alias [color]]'. Color must be an integer.")
+		}
 	}
 	return nil
 }
@@ -138,6 +148,7 @@ type Config struct {
 // stored in maps for faster access
 type PostConfig struct {
 	TagAliases map[string]string
+	TagColors  map[string]int
 }
 
 const (
@@ -248,19 +259,25 @@ key = a prompt attach
 key = A deattach
 
 # The tags section can be used to set display aliases for tags.
-# This can be used to hide or abbreviate common tags.
+# This can be used to hide or abbreviate common tags and to color important
+# tags to highlight unread mail for example.
 #
 # [tags]
 # alias = replied >
 # alias = attachment @
 # alias = sent  # empty alias means hiding tag
+# alias = unread unread 87 # highlight the unread tag in color 87
 
 `
 
 func preparePostConfig(pcfg *PostConfig, cfg *Config) {
 	pcfg.TagAliases = make(map[string]string)
+	pcfg.TagColors = make(map[string]int)
 	for _, a := range cfg.Tags.Alias {
 		pcfg.TagAliases[a.tag] = a.alias
+		if a.color >= 0 {
+			pcfg.TagColors[a.tag] = a.color
+		}
 	}
 }
 
