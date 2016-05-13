@@ -156,6 +156,7 @@ func (b *BufferStack) HandleEvent(event *termbox.Event) {
 	}
 
 	if event.Type == termbox.EventKey {
+		StatusLine = ""
 		if b.prompt.Active() {
 			cmd, args := b.prompt.HandleEvent(event)
 			if len(cmd) != 0 {
