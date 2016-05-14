@@ -13,11 +13,13 @@ Features include
 - reading, replying and composing new messages
 - sending and receiving attachments
 - multiple accounts
+- simple tab completion in the prompt
 
 Things that are left to do
 
 - encryption/signing support
-- making the `:` prompt a bit friendlier (history, tab completion)
+- making the `:` prompt a bit friendlier (history)
+- proper group reply
 
 ## Installation
 

@@ -5,15 +5,53 @@
 package main
 
 import (
+	"github.com/laochailan/barely/completion"
 	"strings"
 
 	termbox "github.com/nsf/termbox-go"
 )
 
+// completionContext keeps track of the current completion attempt.
+// It saves the matching results and chooses the next result when cycling
+// through them.
+type completionContext struct {
+	matches  []string
+	matchIdx int
+}
+
+func (cc *completionContext) query(str []rune) (result []rune) {
+	sstr := string(str)
+
+	// Don’t do file path completion if the command is not yet finished.
+	if strings.LastIndex(sstr, " ") == -1 {
+		return str
+	}
+
+	// if the prompt was not changed and there is more than one result,
+	// cycle through results
+	if len(cc.matches) > 1 && sstr == cc.matches[cc.matchIdx] {
+		if cc.matchIdx++; cc.matchIdx >= len(cc.matches) {
+			cc.matchIdx = 0
+		}
+		return []rune(cc.matches[cc.matchIdx])
+	}
+
+	cc.matchIdx = 0
+	cc.matches = completion.Query(sstr)
+
+	if cc.matches == nil {
+		return str
+	}
+
+	return []rune(cc.matches[cc.matchIdx])
+}
+
 // Prompt represents the command prompt at the bottom of the screen.
 type Prompt struct {
 	text   []rune
 	cursor int
+
+	compCont completionContext
 }
 
 // Active returns true if the prompt is on and false if it is off.
@@ -80,6 +118,9 @@ func (p *Prompt) HandleEvent(e *termbox.Event) (string, []string) {
 			p.cursor++
 		case termbox.KeySpace:
 			p.putChar(' ')
+		case termbox.KeyTab:
+			p.text = p.compCont.query(p.text)
+			p.cursor = len(p.text)
 		}
 	} else {
 		p.putChar(e.Ch)
