@@ -7,6 +7,7 @@ package main
 import (
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/laochailan/notmuch/bindings/go/src/notmuch"
 	termbox "github.com/nsf/termbox-go"
@@ -197,11 +198,10 @@ func (b *SearchBuffer) Draw() {
 			if i+offset == b.cursor {
 				tagFgs[j] = -1
 			}
-
 			printLine(10+tagLength, i, tags[j], tagFgs[j], -1)
-			tagLength += len(tags[j]) + 1
+			tagLength += utf8.RuneCountInString(tags[j]) + 1
 		}
-		printLine(11+tagLength, i, from, fromFg, -1)
+		printLine(11+tagLength-1, i, from, fromFg, -1)
 		printLine(12+len(from)+tagLength, i, subj, subjFg, -1)
 
 	}
