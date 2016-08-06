@@ -247,6 +247,10 @@ func attachmentName(p *Part) string {
 		return ""
 	}
 	if name := params["name"]; name != "" {
+		name, _, err = qp.DecodeHeader(name)
+		if err != nil {
+			return ""
+		}
 		return name
 	}
 	_, params, err = mime.ParseMediaType(p.Header.Get("Content-Disposition"))
