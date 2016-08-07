@@ -19,12 +19,13 @@ import (
 
 // ComposeBuffer is a MailBuffer that allows editing and sending the viewed message.
 type ComposeBuffer struct {
-	mb *MailBuffer
+	mb   *MailBuffer
+	sent bool
 }
 
 // NewComposeBuffer creates a new Composebuffer for displaying a mail.
 func NewComposeBuffer(m *Mail) *ComposeBuffer {
-	return &ComposeBuffer{NewMailBufferFromMail(m)}
+	return &ComposeBuffer{NewMailBufferFromMail(m), false}
 }
 
 // Draw draws the buffer content.
@@ -34,7 +35,11 @@ func (b *ComposeBuffer) Draw() {
 
 // Title returns the buffer's title string.
 func (b *ComposeBuffer) Title() string {
-	return b.mb.mail.Header.Get("Message-ID")
+	if b.sent {
+		return "sent"
+	} else {
+		return "unsent"
+	}
 }
 
 // Name returns the buffer's name.
@@ -157,6 +162,10 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 	case "edit":
 		b.openEditor(stack)
 	case "send":
+		if b.sent {
+			StatusLine = "Mail already sent"
+			break
+		}
 		StatusLine = "Sending..."
 		stack.refresh()
 		err := sendMail(b.mb.mail)
