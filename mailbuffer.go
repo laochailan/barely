@@ -391,6 +391,7 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 			fmt.Println(err)
 		}
 		termbox.Init()
+		termbox.Sync()
 		stack.refresh()
 	case "reply":
 		reply := composeReply(b.mail)

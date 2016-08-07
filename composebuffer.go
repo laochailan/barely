@@ -146,6 +146,7 @@ func (b *ComposeBuffer) openEditor(stack *BufferStack) {
 		StatusLine = err.Error()
 	}
 	termbox.Init()
+	termbox.Sync()
 	err = parseEditString(filename, b.mb.mail)
 	if err != nil {
 		StatusLine = err.Error()
