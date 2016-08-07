@@ -73,7 +73,9 @@ func readParts(reader io.Reader, boundary string, parts []Part) ([]Part, error) 
 			if err != nil {
 				return nil, err
 			}
-			slurp = convertToUtf8(slurp)
+			if strings.HasPrefix(mediaType, "text/") {
+				slurp = convertToUtf8(slurp)
+			}
 
 			parts = append(parts, Part{p.Header, string(slurp)})
 		}
