@@ -361,7 +361,6 @@ func (m *Mail) Encode() (string, error) {
 }
 
 func sendMail(m *Mail) error {
-
 	addrl, err := m.Header.AddressList("From")
 	if len(addrl) != 1 {
 		return errors.New("Invalid count of addresses in 'From' field.")
@@ -389,9 +388,12 @@ func sendMail(m *Mail) error {
 	strcmd := strings.Split(account.Sendmail_Command, " ")
 	cmd := exec.Command(strcmd[0], strcmd[1:]...)
 	cmd.Stdin = strings.NewReader(mailcont)
-	output, _ := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if len(output) != 0 {
 		return errors.New(string(output))
+	}
+	if err != nil {
+		return err
 	}
 
 	filename, err := maildir.Store(expandEnvHome(account.Sent_Dir), []byte(mailcont), "S")
