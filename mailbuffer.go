@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	termbox "github.com/nsf/termbox-go"
-	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
 
 // MailBuffer displays mails and allows replying to them
@@ -176,7 +175,8 @@ func (b *MailBuffer) refreshBuf() {
 
 func (b *MailBuffer) drawHeader() {
 	getHeader := func(key string) string {
-		str, _, err := qp.DecodeHeader(b.mail.Header.Get(key)) // ignore charset for now
+		dec := new(mime.WordDecoder)
+		str, err := dec.DecodeHeader(b.mail.Header.Get(key)) // ignore charset for now
 		if err != nil {
 			str = err.Error()
 		}
@@ -247,7 +247,8 @@ func attachmentName(p *Part) string {
 		return ""
 	}
 	if name := params["name"]; name != "" {
-		name, _, err = qp.DecodeHeader(name)
+		dec := new(mime.WordDecoder)
+		name, err = dec.DecodeHeader(name)
 		if err != nil {
 			return ""
 		}

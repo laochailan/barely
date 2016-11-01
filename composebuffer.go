@@ -175,6 +175,7 @@ func (b *ComposeBuffer) HandleCommand(cmd string, args []string, stack *BufferSt
 		} else {
 			StatusLine = "Mail sent."
 			b.sent = true
+			stack.refresh()
 		}
 	case "attach":
 		if len(args) == 0 {

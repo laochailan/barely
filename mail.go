@@ -29,7 +29,6 @@ import (
 	"github.com/laochailan/barely/maildir"
 	"github.com/laochailan/notmuch/bindings/go/src/notmuch"
 	"github.com/saintfish/chardet"
-	qp "gopkg.in/alexcesaro/quotedprintable.v2"
 )
 
 // Part represents a multipart part. Messages that do not have multipart content
@@ -83,7 +82,7 @@ func readParts(reader io.Reader, boundary string, parts []Part) ([]Part, error) 
 	return parts, nil
 }
 
-// convertToUtf8 dectects the charset of the given plain text slice and converts it to utf-8
+// convertToUtf8 detects the charset of the given plain text slice and converts it to utf-8
 // if necessary
 func convertToUtf8(text []byte) (converted []byte) {
 	detector := chardet.NewTextDetector()
@@ -176,11 +175,12 @@ func composeMail() *Mail {
 func composeReply(m *Mail) *Mail {
 	reply := composeMail()
 
-	to, _, err := qp.DecodeHeader(m.Header.Get("From"))
+	dec := new(mime.WordDecoder)
+	to, err := dec.DecodeHeader(m.Header.Get("From"))
 	if err != nil {
 		to = m.Header.Get("From")
 	}
-	from, _, err := qp.DecodeHeader(m.Header.Get("To"))
+	from, err := dec.DecodeHeader(m.Header.Get("To"))
 	if err != nil {
 		from = m.Header.Get("To")
 	}
@@ -197,7 +197,7 @@ func composeReply(m *Mail) *Mail {
 	newrefs = append(newrefs, m.Header.Get("Message-ID"))
 	reply.Header["References"] = newrefs
 
-	subj, _, err := qp.DecodeHeader(m.Header.Get("Subject"))
+	subj, err := dec.DecodeHeader(m.Header.Get("Subject"))
 	if err != nil {
 		subj = m.Header.Get("Subject")
 	}
@@ -288,7 +288,7 @@ func (m *Mail) Encode() (string, error) {
 		return "", errors.New("Error: message without content")
 	}
 
-	henc := qp.Q.NewHeaderEncoder("utf-8")
+	henc := new(mime.WordEncoder)
 	boundary := randomBoundary()
 
 	if len(m.Parts) == 1 {
@@ -308,13 +308,11 @@ func (m *Mail) Encode() (string, error) {
 				continue
 			}
 
-			if qp.NeedsEncoding(val[i]) {
-				if key == "From" || key == "To" { // don't encode mail addresses.
-					split := strings.Split(val[i], " ")
-					val[i] = henc.Encode(strings.Join(split[:len(split)-1], " ")) + " " + split[len(split)-1]
-				} else {
-					val[i] = henc.Encode(val[i])
-				}
+			if key == "From" || key == "To" { // don't encode mail addresses.
+				split := strings.Split(val[i], " ")
+				val[i] = henc.Encode("utf-8", strings.Join(split[:len(split)-1], " ")) + " " + split[len(split)-1]
+			} else {
+				val[i] = henc.Encode("utf-8", val[i])
 			}
 		}
 
@@ -350,7 +348,7 @@ func (m *Mail) Encode() (string, error) {
 			}
 			writer := pw
 			if p.Header.Get("Content-Transfer-Encoding") == "quoted-printable" {
-				writer = qp.NewEncoder(pw)
+				writer = quotedprintable.NewWriter(pw)
 			}
 
 			writer.Write([]byte(p.Body))
