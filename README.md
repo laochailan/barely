@@ -19,7 +19,6 @@ Things that are left to do
 
 - encryption/signing support
 - making the `:` prompt a bit friendlier (history)
-- proper group reply
 
 ## Installation
 

@@ -395,7 +395,10 @@ func (b *MailBuffer) HandleCommand(cmd string, args []string, stack *BufferStack
 		termbox.Sync()
 		stack.refresh()
 	case "reply":
-		reply := composeReply(b.mail)
+		reply := composeReply(b.mail, false)
+		stack.Push(NewComposeBuffer(reply))
+	case "groupreply":
+		reply := composeReply(b.mail, true)
 		stack.Push(NewComposeBuffer(reply))
 	case "search":
 		if len(args) > 0 {

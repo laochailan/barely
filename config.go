@@ -243,6 +243,7 @@ key = pageup move pageup
 key = pagedown move pagedown
 key = enter show
 key = r reply
+key = R groupreply
 key = / prompt search
 key = | prompt search
 key = n search

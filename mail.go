@@ -171,21 +171,54 @@ func composeMail() *Mail {
 	return m
 }
 
+// chooseReplyToFrom chooses the To and From fields of the reply based on the fields of the mail replied to
+func chooseReplyToFrom(origTo, origFrom string, groupReply bool) (to, from string) {
+	fromAddr, err := mail.ParseAddressList(origFrom)
+	if err != nil {
+		return origFrom, origTo
+	}
+	toAddr, err := mail.ParseAddressList(origTo)
+	if err != nil {
+		return origFrom, origTo
+	}
+
+	from = origTo
+
+	// find an address that can be sent from
+outer:
+	for i, addr := range toAddr {
+		for _, account := range config.Account {
+			if addr.Address == account.Addr {
+				from = addr.String()
+				if groupReply {
+					fromAddr = append(fromAddr, toAddr[:i]...)
+					fromAddr = append(fromAddr, toAddr[i+1:]...)
+					StatusLine = fmt.Sprintf("%d", len(fromAddr))
+				}
+				break outer
+			}
+		}
+	}
+
+	strList := make([]string, len(fromAddr))
+	for i, a := range fromAddr {
+		strList[i] = a.String()
+	}
+
+	to = strings.Join(strList, ", ")
+	return to, from
+}
+
 // composeReply creates a Mail structure for a Reply to Mail m.
-func composeReply(m *Mail) *Mail {
+func composeReply(m *Mail, groupReply bool) *Mail {
 	reply := composeMail()
 
 	dec := new(mime.WordDecoder)
-	to, err := dec.DecodeHeader(m.Header.Get("From"))
-	if err != nil {
-		to = m.Header.Get("From")
-	}
-	from, err := dec.DecodeHeader(m.Header.Get("To"))
-	if err != nil {
-		from = m.Header.Get("To")
-	}
-	reply.Header["To"] = []string{to}
-	reply.Header["From"] = []string{from}
+
+	oldFrom := m.Header.Get("From")
+	oldTo := m.Header.Get("To")
+	to, from := chooseReplyToFrom(oldTo, oldFrom, groupReply)
+	reply.Header["To"], reply.Header["From"] = []string{to}, []string{from}
 	reply.Header["In-Reply-To"] = []string{m.Header.Get("Message-ID")}
 
 	refs := m.Header["References"]
@@ -288,7 +321,6 @@ func (m *Mail) Encode() (string, error) {
 		return "", errors.New("Error: message without content")
 	}
 
-	henc := new(mime.WordEncoder)
 	boundary := randomBoundary()
 
 	if len(m.Parts) == 1 {
@@ -310,9 +342,9 @@ func (m *Mail) Encode() (string, error) {
 
 			if key == "From" || key == "To" { // don't encode mail addresses.
 				split := strings.Split(val[i], " ")
-				val[i] = henc.Encode("utf-8", strings.Join(split[:len(split)-1], " ")) + " " + split[len(split)-1]
+				val[i] = mime.QEncoding.Encode("utf-8", strings.Join(split[:len(split)-1], " ")) + " " + split[len(split)-1]
 			} else {
-				val[i] = henc.Encode("utf-8", val[i])
+				val[i] = mime.QEncoding.Encode("utf-8", val[i])
 			}
 		}
 
