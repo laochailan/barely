@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/laochailan/notmuch/bindings/go/src/notmuch"
+	"github.com/laochailan/notmuch-go"
 	termbox "github.com/nsf/termbox-go"
 )
 

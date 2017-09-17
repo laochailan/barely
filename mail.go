@@ -27,7 +27,7 @@ import (
 
 	"github.com/djimenez/iconv-go"
 	"github.com/laochailan/barely/maildir"
-	"github.com/laochailan/notmuch/bindings/go/src/notmuch"
+	"github.com/laochailan/notmuch-go"
 	"github.com/saintfish/chardet"
 )
 
