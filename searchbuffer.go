@@ -6,6 +6,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"time"
 	"unicode/utf8"
 
@@ -106,6 +107,7 @@ func NewSearchBuffer(term string, typ SearchType) *SearchBuffer {
 	buf.database, status = notmuch.OpenDatabase(expandEnvHome(config.General.Database), 0)
 	if status != notmuch.STATUS_SUCCESS {
 		StatusLine = status.String()
+		log.Fatalln("Could not open notmuch database: ", status.String())
 	}
 
 	buf.refreshQuery()
