@@ -139,11 +139,11 @@ func readMail(filename string) (*Mail, error) {
 		// convert to multipart
 		const boundaryText = "uaedt3rnc5trnu0aio94rane"
 		buf := new(bytes.Buffer)
-		buf.WriteString("--" + boundaryText + "\n")
-		buf.WriteString("Content-Type: " + m.Header.Get("Content-Type") + "\n")
-		buf.WriteString("Content-Transfer-Encoding: " + m.Header.Get("Content-Transfer-Encoding") + "\n\n")
+		buf.WriteString("--" + boundaryText + "\r\n")
+		buf.WriteString("Content-Type: " + m.Header.Get("Content-Type") + "\r\n")
+		buf.WriteString("Content-Transfer-Encoding: " + m.Header.Get("Content-Transfer-Encoding") + "\r\n\r\n")
 		io.Copy(buf, msg.Body)
-		buf.WriteString("\n--" + boundaryText + "--\n")
+		buf.WriteString("\r\n--" + boundaryText + "--\r\n")
 
 		bodyReader = buf
 		boundary = boundaryText
@@ -349,7 +349,7 @@ func (m *Mail) Encode() (string, error) {
 		}
 
 		s := strings.Join(val, " ")
-		headers = append(headers, key+": "+s+"\n")
+		headers = append(headers, key+": "+s+"\r\n")
 	}
 	sort.Strings(headers)
 	for _, s := range headers {
@@ -358,7 +358,7 @@ func (m *Mail) Encode() (string, error) {
 			return "", err
 		}
 	}
-	_, err := buffer.WriteString("\n")
+	_, err := buffer.WriteString("\r\n")
 	if err != nil {
 		return "", err
 	}
@@ -485,7 +485,7 @@ func (n *newlineInserter) Write(data []byte) (int, error) {
 		if err != nil {
 			return written, err
 		}
-		num, err = n.w.Write([]byte{'\n'})
+		num, err = n.w.Write([]byte("\r\n"))
 		written += num
 		if err != nil {
 			return written, err
