@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
 )
 
@@ -96,7 +97,11 @@ func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int
 		}
 
 		buf[y*w+x] = termbox.Cell{ch, fg, 0}
-		x++
+		runeWidth := runewidth.RuneWidth(ch)
+		if runeWidth == 0 || (runeWidth == 2 && runewidth.IsAmbiguousWidth(ch)) {
+			runeWidth = 1
+		}
+		x+=runeWidth
 	}
 
 	for ; x < w; x++ {

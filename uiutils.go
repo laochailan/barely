@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/nsf/termbox-go"
 )
 
@@ -38,7 +39,11 @@ func printLine(x, y int, text string, fg, bg int) {
 		if bg >= 0 {
 			cbuf[y*w+x+i].Bg = termbox.Attribute(bg)
 		}
-		i++
+		runeWidth := runewidth.RuneWidth(c)
+		if runeWidth == 0 || (runeWidth == 2 && runewidth.IsAmbiguousWidth(c)) {
+			runeWidth = 1
+		}
+		i += runeWidth
 	}
 }
 
