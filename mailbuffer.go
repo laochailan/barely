@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/paulrosania/go-charset/charset"
+	_ "github.com/paulrosania/go-charset/data"
 	"github.com/mattn/go-runewidth"
 	termbox "github.com/nsf/termbox-go"
 )
@@ -101,7 +103,7 @@ func formatPlain(buf []termbox.Cell, y, w int, text string) ([]termbox.Cell, int
 		if runeWidth == 0 || (runeWidth == 2 && runewidth.IsAmbiguousWidth(ch)) {
 			runeWidth = 1
 		}
-		x+=runeWidth
+		x += runeWidth
 	}
 
 	for ; x < w; x++ {
@@ -180,8 +182,8 @@ func (b *MailBuffer) refreshBuf() {
 
 func (b *MailBuffer) drawHeader() {
 	getHeader := func(key string) string {
-		dec := new(mime.WordDecoder)
-		str, err := dec.DecodeHeader(b.mail.Header.Get(key)) // ignore charset for now
+		dec := &mime.WordDecoder{charset.NewReader}
+		str, err := dec.DecodeHeader(b.mail.Header.Get(key))
 		if err != nil {
 			str = err.Error()
 		}

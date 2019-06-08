@@ -72,7 +72,7 @@ func readParts(reader io.Reader, boundary string, parts []Part) ([]Part, error) 
 			if err != nil {
 				return nil, err
 			}
-			if strings.HasPrefix(mediaType, "text/") {
+			if strings.HasPrefix(mediaType, "text/plain") {
 				slurp = convertToUtf8(slurp)
 			}
 
@@ -390,6 +390,25 @@ func (m *Mail) Encode() (string, error) {
 	return buffer.String(), err
 }
 
+func addToMaildir(maildirPath string, content []byte) (filename string, err error) {
+	md, err := maildir.Open(maildirPath, true)
+	if err != nil {
+		return
+	}
+
+	msg, err := md.NewMessage(content)
+	if err != nil {
+		return
+	}
+	err = msg.SetFlags("S")
+	if err != nil {
+		return
+	}
+
+	filename, err = msg.Filename()
+	return
+}
+
 func sendMail(m *Mail) error {
 	addrl, err := m.Header.AddressList("From")
 	if len(addrl) != 1 {
@@ -426,7 +445,7 @@ func sendMail(m *Mail) error {
 		return err
 	}
 
-	filename, err := maildir.Store(expandEnvHome(account.Sent_Dir), []byte(mailcont), "S")
+	filename, err := addToMaildir(expandEnvHome(account.Sent_Dir), []byte(mailcont))
 	if err != nil {
 		return err
 	}
